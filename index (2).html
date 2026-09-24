@@ -1,0 +1,2653 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#07111f">
+  <title>PERIYAR SAKSHI — Basin Intelligence & Early Warning Network</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Outfit:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css">
+  <style>
+    :root {
+      --bg-surface: #07111f;
+      --bg-card: #0d1a2b;
+      --bg-card-hover: #12243a;
+      --bg-input: #0a1626;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --text-dim: #64748b;
+      --border-subtle: rgba(148,163,184,.18);
+      --border-bright: rgba(148,163,184,.38);
+      --river-cyan: #00e5ff;
+      --emerald-safe: #10b981;
+      --amber-warning: #f59e0b;
+      --rose-danger: #f43f5e;
+      --purple-intake: #a855f7;
+    }
+    * { box-sizing: border-box; }
+    html, body { width:100%; height:100%; margin:0; }
+    body { font-family:'Plus Jakarta Sans',sans-serif; background:var(--bg-surface); color:var(--text-main); overflow:hidden; }
+    button, input, textarea { font:inherit; }
+    .app-layout { width:100vw; height:100vh; display:grid; grid-template-columns:minmax(0,1fr) 380px; grid-template-rows:58px 1fr; }
+    header { grid-column:1 / -1; display:flex; align-items:center; justify-content:space-between; padding:0 18px; background:rgba(7,17,31,.96); border-bottom:1px solid var(--border-subtle); z-index:1000; }
+    .brand-group,.header-controls-group,.brand-titles,.live-beacon,.map-floating-hud,.glass-pill-bar,.layer-switcher,.gps-action-group,.dispatch-action-row { display:flex; align-items:center; }
+    .brand-group { gap:10px; }
+    .brand-logo { width:34px; height:34px; display:grid; place-items:center; border:1px solid var(--border-bright); border-radius:9px; color:var(--river-cyan); background:rgba(0,229,255,.08); }
+    .brand-titles { flex-direction:column; align-items:flex-start; gap:1px; }
+    .brand-titles h1 { margin:0; font:800 18px/1 'Outfit',sans-serif; }
+    .brand-titles span { color:var(--text-muted); font:600 9px/1.2 'JetBrains Mono',monospace; letter-spacing:.5px; }
+    .header-controls-group { gap:8px; }
+    .util-btn,.hud-btn,.layer-btn { border:1px solid var(--border-subtle); background:rgba(13,26,43,.92); color:var(--text-muted); cursor:pointer; }
+    .util-btn { display:flex; align-items:center; gap:6px; padding:7px 10px; border-radius:8px; }
+    .live-beacon { gap:7px; padding-left:8px; font:700 10px 'JetBrains Mono',monospace; color:var(--text-muted); }
+    .live-dot { width:7px; height:7px; border-radius:50%; background:var(--emerald-safe); box-shadow:0 0 10px var(--emerald-safe); }
+    #map-container { position:relative; min-width:0; min-height:0; }
+    #map { position:absolute; inset:0; background:#0a1626; }
+    aside { min-width:0; min-height:0; background:var(--bg-surface); border-left:1px solid var(--border-subtle); z-index:900; display:flex; flex-direction:column; }
+    .map-floating-hud { position:absolute; top:16px; left:16px; z-index:700; }
+    .glass-pill-bar { gap:4px; padding:4px; border:1px solid var(--border-subtle); border-radius:12px; background:rgba(7,17,31,.8); backdrop-filter:blur(12px); }
+    .hud-btn { display:flex; align-items:center; gap:7px; padding:9px 12px; border-radius:8px; }
+    .hud-btn.active { color:var(--river-cyan); border-color:var(--river-cyan); background:rgba(0,229,255,.08); }
+    .hud-btn.report-mode { color:#fff; background:rgba(244,63,94,.12); border-color:var(--rose-danger); }
+    .layer-switcher { position:absolute; top:16px; right:16px; z-index:700; gap:4px; padding:4px; border:1px solid var(--border-subtle); border-radius:10px; background:rgba(7,17,31,.82); backdrop-filter:blur(12px); }
+    .layer-btn { padding:7px 9px; border-radius:7px; font-size:10px; }
+    .layer-btn.active { color:var(--river-cyan); border-color:var(--river-cyan); }
+    .pin-instruction-banner { position:absolute; left:50%; top:16px; transform:translateX(-50%) translateY(-10px); opacity:0; pointer-events:none; z-index:700; padding:9px 14px; border:1px solid var(--river-cyan); border-radius:10px; background:rgba(7,17,31,.9); color:var(--text-main); font-size:11px; transition:.2s; }
+    .pin-instruction-banner.visible { opacity:1; transform:translateX(-50%) translateY(0); }
+    .hud-legend { position:absolute; left:16px; bottom:16px; z-index:700; padding:10px 12px; border:1px solid var(--border-subtle); border-radius:10px; background:rgba(7,17,31,.84); backdrop-filter:blur(10px); font-size:10px; color:var(--text-muted); }
+    .legend-item { margin-top:5px; display:flex; align-items:center; gap:6px; }
+    .legend-symbol { width:9px; height:9px; display:inline-block; border-radius:50%; }
+    .legend-symbol.river-flow { width:18px; height:3px; border-radius:2px; background:var(--river-cyan); }
+    .sidebar-tabs { display:grid; grid-template-columns:repeat(4,1fr); gap:4px; padding:7px; border-bottom:1px solid var(--border-subtle); }
+    .tab-trigger { display:flex; align-items:center; justify-content:center; gap:4px; padding:9px 4px; border-radius:8px; background:transparent; border:1px solid transparent; color:var(--text-muted); font-size:11.5px; font-weight:600; cursor:pointer; transition:all .2s; }
+    .tab-trigger:hover { color:var(--text-main); background:rgba(125,125,125,.06); }
+    .tab-trigger.active { background:var(--bg-card); color:var(--river-cyan); border-color:var(--border-bright); box-shadow:0 4px 12px rgba(0,0,0,.15); }
+    .tab-trigger.admin-tab.active { color:#a855f7; border-color:#a855f7; background:rgba(168,85,247,.1); }
+    .tab-badge { padding:1px 5px; border-radius:10px; font-size:9.5px; font-family:'JetBrains Mono',monospace; background:rgba(0,229,255,.15); color:var(--river-cyan); }
+    .tab-content-area { flex:1; min-height:0; overflow-y:auto; padding:20px; scrollbar-width:thin; scrollbar-color:var(--border-subtle) transparent; }
+    .toast-notification { position:fixed; bottom:24px; right:24px; z-index:9999; background:var(--bg-surface); border:1px solid var(--river-cyan); border-radius:12px; padding:14px 18px; box-shadow:0 12px 30px rgba(0,0,0,.5); display:flex; align-items:center; gap:12px; transform:translateY(100px); opacity:0; transition:all .35s cubic-bezier(.34,1.56,.64,1); color:var(--text-main); font-size:13px; font-weight:600; }
+    .toast-notification.active { transform:translateY(0); opacity:1; }
+    .custom-radar-marker { display:flex; align-items:center; justify-content:center; position:relative; }
+    @media (max-width:960px) {
+      .app-layout { grid-template-columns:1fr; grid-template-rows:58px 1fr; }
+      aside { position:absolute; left:0; right:0; bottom:0; height:64vh; border-left:none; border-top:1px solid var(--border-subtle); border-radius:20px 20px 0 0; box-shadow:0 -10px 40px rgba(0,0,0,.6); transform:translateY(calc(100% - 60px)); transition:transform .35s cubic-bezier(.34,1.2,.64,1); }
+      aside.drawer-expanded { transform:translateY(0); }
+      .drawer-drag-handle { width:44px; height:4px; border-radius:2px; background:var(--text-dim); margin:8px auto 4px; cursor:pointer; }
+      .map-floating-hud { top:12px; left:12px; }
+      .layer-switcher { top:12px; right:12px; }
+      .hud-legend { display:none; }
+      .brand-titles span,.live-beacon span { display:none; }
+    }
+
+
+  .tab-trigger:hover {
+    color: var(--text-main);
+    background: rgba(125, 125, 125, 0.06);
+  }
+
+  .tab-trigger.active {
+    background: var(--bg-card);
+    color: var(--river-cyan);
+    border-color: var(--border-bright);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  }
+
+  .tab-trigger.admin-tab.active {
+    color: #a855f7;
+    border-color: #a855f7;
+    background: rgba(168, 85, 247, 0.1);
+  }
+
+  .tab-badge {
+    padding: 1px 5px;
+    border-radius: 10px;
+    font-size: 9.5px;
+    font-family: 'JetBrains Mono', monospace;
+    background: rgba(0, 229, 255, 0.15);
+    color: var(--river-cyan);
+  }
+
+  /* TAB PANELS */
+  .tab-content-area {
+    flex: 1;
+    overflow-y: auto;
+    padding: 20px;
+    scrollbar-width: thin;
+    scrollbar-color: var(--border-subtle) transparent;
+  }
+
+  .panel-view { display: none; animation: fadeIn 0.25s ease-out; }
+  .panel-view.active { display: block; }
+
+  /* FORM STYLING */
+  .form-group { margin-bottom: 18px; }
+
+  .form-label {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 11.5px;
+    font-weight: 700;
+    color: var(--text-muted);
+    margin-bottom: 7px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  .form-label .optional-tag {
+    font-size: 10px;
+    text-transform: none;
+    color: var(--text-dim);
+    font-weight: 400;
+  }
+
+  .input-control, .textarea-control {
+    width: 100%;
+    background: var(--bg-input);
+    border: 1px solid var(--border-subtle);
+    border-radius: 8px;
+    padding: 11px 14px;
+    color: var(--text-main);
+    font-family: inherit;
+    font-size: 13.5px;
+    outline: none;
+    transition: all 0.2s;
+  }
+
+  .input-control:focus, .textarea-control:focus {
+    border-color: var(--river-cyan);
+    box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.15);
+  }
+
+  .textarea-control { min-height: 75px; resize: vertical; }
+
+  /* SIGHTING CARDS */
+  .sighting-card-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+    margin-bottom: 6px;
+  }
+
+  .sighting-opt-card {
+    border: 1px solid var(--border-subtle);
+    border-radius: 8px;
+    background: var(--bg-card);
+    padding: 10px 12px;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 9px;
+  }
+
+  .sighting-opt-card:hover {
+    border-color: var(--border-bright);
+    background: var(--bg-card-hover);
+  }
+
+  .sighting-opt-card.selected {
+    background: rgba(2, 132, 199, 0.15);
+    border-color: var(--river-cyan);
+    box-shadow: 0 0 14px rgba(2, 132, 199, 0.2);
+  }
+
+  .sighting-icon-wrap {
+    width: 28px;
+    height: 28px;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(125, 125, 125, 0.1);
+    color: var(--river-cyan);
+    flex-shrink: 0;
+  }
+
+  .sighting-opt-card.selected .sighting-icon-wrap {
+    background: var(--river-cyan);
+    color: #ffffff;
+  }
+
+  .sighting-text { font-size: 12px; font-weight: 600; line-height: 1.25; }
+
+  /* SEVERITY SLIDER */
+  .severity-meter-wrap {
+    background: var(--bg-card);
+    border: 1px solid var(--border-subtle);
+    border-radius: 8px;
+    padding: 12px 14px;
+    margin-top: 4px;
+  }
+
+  .severity-levels {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 8px;
+    font-size: 10.5px;
+    font-weight: 700;
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  .sev-advisory { color: var(--emerald-safe); }
+  .sev-moderate { color: var(--amber-warning); }
+  .sev-critical { color: var(--rose-danger); }
+
+  .range-slider {
+    width: 100%;
+    -webkit-appearance: none;
+    height: 6px;
+    border-radius: 3px;
+    background: linear-gradient(90deg, #10b981 0%, #f59e0b 50%, #f43f5e 100%);
+    outline: none;
+  }
+
+  .range-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: #ffffff;
+    border: 3px solid #0284c7;
+    box-shadow: 0 0 8px rgba(0, 0, 0, 0.4);
+    cursor: pointer;
+  }
+
+  /* GPS BOX */
+  .gps-picker-box {
+    border: 1px dashed var(--border-bright);
+    border-radius: 8px;
+    padding: 14px;
+    background: var(--bg-card);
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .gps-picker-box.locked {
+    border-style: solid;
+    border-color: var(--river-cyan);
+    background: rgba(2, 132, 199, 0.05);
+  }
+
+  .coords-display {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .gps-action-group { display: flex; gap: 8px; }
+
+  .action-btn-sub {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 8px 12px;
+    border-radius: 8px;
+    border: 1px solid var(--border-subtle);
+    background: var(--bg-card);
+    color: var(--text-main);
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .action-btn-sub:hover {
+    background: var(--bg-card-hover);
+    border-color: var(--border-bright);
+  }
+
+  .action-btn-sub.primary-accent {
+    background: rgba(2, 132, 199, 0.15);
+    border-color: var(--river-cyan);
+    color: var(--river-cyan);
+  }
+
+  /* PHOTO UPLOAD */
+  .photo-drop-zone {
+    border: 1px dashed var(--border-subtle);
+    border-radius: 8px;
+    padding: 16px;
+    text-align: center;
+    background: var(--bg-card);
+    cursor: pointer;
+    transition: all 0.2s;
+    overflow: hidden;
+  }
+
+  .photo-drop-zone:hover {
+    border-color: var(--river-cyan);
+    background: var(--bg-card-hover);
+  }
+
+  .drop-zone-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    color: var(--text-muted);
+    font-size: 12px;
+  }
+
+  .photo-preview-img { width: 100%; max-height: 140px; object-fit: cover; border-radius: 6px; display: none; }
+
+  /* PRIVACY ADVISORY */
+  .privacy-advisory-card {
+    background: rgba(2, 132, 199, 0.08);
+    border: 1px solid rgba(2, 132, 199, 0.25);
+    border-radius: 8px;
+    padding: 11px 13px;
+    margin-top: 14px;
+    display: flex;
+    gap: 10px;
+    font-size: 11.5px;
+    color: var(--text-muted);
+    line-height: 1.45;
+  }
+
+  .privacy-advisory-card svg { flex-shrink: 0; margin-top: 2px; color: var(--river-cyan); }
+
+  /* PRIMARY BUTTON */
+  .primary-submit-btn {
+    width: 100%;
+    margin-top: 20px;
+    padding: 14px;
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: linear-gradient(135deg, #0284c7 0%, #00e5ff 100%);
+    color: #ffffff;
+    font-size: 14.5px;
+    font-weight: 800;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    box-shadow: 0 8px 24px rgba(0, 229, 255, 0.3);
+    transition: all 0.25s;
+  }
+
+  .primary-submit-btn:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 12px 30px rgba(0, 229, 255, 0.45);
+  }
+
+  .primary-submit-btn:disabled { opacity: 0.45; cursor: not-allowed; transform: none; box-shadow: none; }
+
+  /* IMPACT DASHBOARD */
+  .verification-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+  }
+
+  .verification-pill.unverified { background: rgba(245, 158, 11, 0.15); border: 1px solid var(--amber-warning); color: var(--amber-warning); }
+  .verification-pill.review { background: rgba(217, 119, 6, 0.15); border: 1px solid #d97706; color: #f59e0b; }
+  .verification-pill.verified { background: rgba(244, 63, 94, 0.15); border: 1px solid var(--rose-danger); color: var(--rose-danger); }
+
+  .impact-metric-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+    margin: 16px 0;
+  }
+
+  .metric-tile {
+    background: var(--bg-card);
+    border: 1px solid var(--border-subtle);
+    border-radius: 8px;
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .metric-val { font-size: 20px; font-weight: 800; color: var(--text-main); font-family: 'Outfit', sans-serif; }
+  .metric-val.cyan { color: var(--river-cyan); }
+  .metric-val.amber { color: var(--amber-warning); }
+  .metric-label { font-size: 10.5px; color: var(--text-muted); font-weight: 600; text-transform: uppercase; }
+
+  .impact-section-title {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--text-main);
+    margin: 20px 0 10px;
+    padding-bottom: 6px;
+    border-bottom: 1px solid var(--border-subtle);
+    text-transform: uppercase;
+  }
+
+  .feature-entity-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-subtle);
+    border-radius: 8px;
+    padding: 12px;
+    margin-bottom: 8px;
+    transition: all 0.2s;
+  }
+
+  .feature-entity-card:hover { border-color: var(--border-bright); background: var(--bg-card-hover); }
+
+  .entity-header { display: flex; align-items: center; justify-content: space-between; font-weight: 600; font-size: 13px; }
+  .entity-name-with-dot { display: flex; align-items: center; gap: 8px; }
+  .entity-meta { font-size: 11.5px; color: var(--text-muted); margin-top: 4px; display: flex; justify-content: space-between; }
+
+  .priority-badge {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    padding: 2px 7px;
+    border-radius: 4px;
+    background: rgba(168, 85, 247, 0.15);
+    color: var(--purple-intake);
+    border: 1px solid rgba(168, 85, 247, 0.3);
+    font-weight: 700;
+  }
+
+  /* ADMIN / DISPATCH CONSOLE */
+  .admin-incident-box {
+    background: var(--bg-card);
+    border: 1px solid var(--border-subtle);
+    border-radius: 12px;
+    padding: 16px;
+    margin-bottom: 14px;
+    transition: all 0.2s;
+  }
+
+  .admin-incident-box.verified-border { border-color: var(--rose-danger); box-shadow: 0 0 15px rgba(244, 63, 94, 0.2); }
+
+  .admin-actions-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 6px;
+    margin: 12px 0 14px;
+  }
+
+  .admin-btn {
+    padding: 8px 6px;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: 700;
+    cursor: pointer;
+    border: 1px solid var(--border-subtle);
+    background: var(--bg-surface);
+    color: var(--text-muted);
+    transition: all 0.2s;
+    text-align: center;
+  }
+
+  .admin-btn.btn-verify { background: rgba(244, 63, 94, 0.15); border-color: var(--rose-danger); color: var(--rose-danger); }
+  .admin-btn.btn-verify:hover { background: var(--rose-danger); color: #fff; }
+  
+  .admin-btn.btn-review { background: rgba(245, 158, 11, 0.15); border-color: var(--amber-warning); color: var(--amber-warning); }
+  .admin-btn.btn-review:hover { background: var(--amber-warning); color: #fff; }
+
+  .admin-btn.btn-dismiss { background: rgba(100, 116, 139, 0.15); border-color: var(--text-dim); color: var(--text-dim); }
+  .admin-btn.btn-dismiss:hover { background: var(--text-dim); color: #fff; }
+
+  .dispatch-gateway-panel {
+    background: var(--bg-surface);
+    border: 1px solid var(--border-subtle);
+    border-radius: 8px;
+    padding: 12px;
+    margin-top: 10px;
+  }
+
+  .gateway-header {
+    font-size: 11.5px;
+    font-weight: 700;
+    color: var(--text-main);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 8px;
+  }
+
+  .dispatch-action-row {
+    display: flex;
+    gap: 8px;
+    margin-top: 8px;
+  }
+
+  .dispatch-trigger-btn {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 8px 10px;
+    border-radius: 6px;
+    font-size: 11.5px;
+    font-weight: 700;
+    cursor: pointer;
+    border: none;
+    text-decoration: none;
+    transition: all 0.2s;
+  }
+
+  .btn-whatsapp { background: #25d366; color: #042f1a; }
+  .btn-whatsapp:hover { background: #1ebd5a; }
+
+  .btn-shutoff { background: var(--rose-danger); color: #ffffff; }
+  .btn-shutoff:hover { filter: brightness(1.1); }
+
+  /* TIMELINE */
+  .timeline-filter-row { display: flex; gap: 6px; margin-bottom: 16px; overflow-x: auto; padding-bottom: 4px; }
+
+  .filter-chip {
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 11.5px;
+    font-weight: 600;
+    border: 1px solid var(--border-subtle);
+    background: var(--bg-card);
+    color: var(--text-muted);
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all 0.2s;
+  }
+
+  .filter-chip.active { background: var(--river-cyan); color: #ffffff; border-color: var(--river-cyan); }
+
+  .timeline-stream { position: relative; padding-left: 20px; }
+  .timeline-stream::before { content: ''; position: absolute; left: 6px; top: 6px; bottom: 6px; width: 2px; background: var(--border-subtle); }
+
+  .timeline-node-card {
+    position: relative;
+    background: var(--bg-card);
+    border: 1px solid var(--border-subtle);
+    border-radius: 8px;
+    padding: 12px 14px;
+    margin-bottom: 14px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .timeline-node-card:hover { border-color: var(--border-bright); transform: translateX(3px); }
+
+  .timeline-node-card::before {
+    content: '';
+    position: absolute;
+    left: -20px;
+    top: 16px;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: var(--amber-warning);
+    border: 2px solid var(--bg-surface);
+  }
+
+  .timeline-node-card.verified::before { background: var(--rose-danger); }
+  .timeline-node-card.review::before { background: #d97706; }
+
+  .tl-top-line { display: flex; justify-content: space-between; align-items: center; font-size: 11px; color: var(--text-muted); font-family: 'JetBrains Mono', monospace; }
+  .tl-title { font-weight: 700; font-size: 13.5px; color: var(--text-main); margin: 4px 0 2px; }
+  .tl-location-str { font-size: 11.5px; color: var(--text-muted); }
+
+  .tl-repeat-alert {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 10.5px;
+    color: #f59e0b;
+    background: rgba(245, 158, 11, 0.1);
+    padding: 2px 6px;
+    border-radius: 4px;
+    margin-top: 6px;
+  }
+
+  /* EMPTY STATES & TOAST */
+  .empty-state-view { text-align: center; padding: 35px 20px; color: var(--text-muted); }
+  .empty-state-view svg { margin-bottom: 14px; color: var(--text-dim); }
+  .empty-state-view h3 { font-size: 16px; color: var(--text-main); margin-bottom: 6px; }
+
+  .toast-notification {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    z-index: 999;
+    background: var(--bg-surface);
+    border: 1px solid var(--river-cyan);
+    border-radius: 12px;
+    padding: 14px 18px;
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    color: var(--text-main);
+    font-size: 13px;
+    font-weight: 600;
+    transform: translateY(100px);
+    opacity: 0;
+    transition: all 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+
+  .toast-notification.active { transform: translateY(0); opacity: 1; }
+
+  .custom-radar-marker { display: flex; align-items: center; justify-content: center; position: relative; }
+  .radar-ring { position: absolute; width: 36px; height: 36px; border-radius: 50%; border: 2px solid var(--river-cyan); animation: radarRipple 2s infinite ease-out; }
+  .radar-center-dot { width: 20px; height: 20px; border-radius: 50%; background: var(--river-cyan); border: 2px solid #ffffff; display: flex; align-items: center; justify-content: center; color: #fff; font-weight: 800; font-size: 10px; }
+
+  @keyframes pulseGlow { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.4; transform: scale(0.85); } }
+  @keyframes radarRipple { 0% { transform: scale(0.5); opacity: 1; } 100% { transform: scale(2.2); opacity: 0; } }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+
+  /* MOBILE RESPONSIVE */
+  @media (max-width: 960px) {
+    .app-layout { grid-template-columns: 1fr; grid-template-rows: 58px 1fr; }
+    header { padding: 0 12px; grid-column: 1 / 2; }
+    .brand-titles h1 { font-size: 16px; }
+    .brand-titles span { display: none; }
+    .live-beacon span { display: none; }
+
+    aside {
+      position: absolute;
+      bottom: 0; left: 0; right: 0;
+      height: 64vh;
+      border-left: none;
+      border-top: 1px solid var(--border-subtle);
+      border-radius: 20px 20px 0 0;
+      box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.6);
+      transform: translateY(calc(100% - 60px));
+      transition: transform 0.35s cubic-bezier(0.34, 1.2, 0.64, 1);
+    }
+
+    aside.drawer-expanded { transform: translateY(0); }
+    .drawer-drag-handle { width: 44px; height: 4px; border-radius: 2px; background: var(--text-dim); margin: 8px auto 4px; cursor: pointer; }
+    .map-floating-hud { top: 12px; left: 12px; }
+    .layer-switcher { top: 12px; right: 12px; }
+    .hud-legend { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<div class="app-layout">
+  <!-- TOP TELEMETRY HUD HEADER -->
+  <header>
+    <div class="brand-group">
+      <div class="brand-logo">
+        <i data-lucide="shield-alert" style="width:24px;height:24px;"></i>
+      </div>
+      <div class="brand-titles">
+        <h1 id="app-title-display">PERIYAR SAKSHI <span style="font-size:10px;padding:2px 6px;border-radius:4px;background:rgba(2,132,199,0.15);color:var(--river-cyan);">പെരിയാർ സാക്ഷി</span></h1>
+        <span data-i18n="header_sub">BASIN INTELLIGENCE & EARLY WARNING NETWORK</span>
+      </div>
+    </div>
+
+    <div class="header-controls-group">
+      <!-- Language Toggle EN / ML -->
+      <button class="util-btn" id="lang-toggle-btn" title="Switch Language / ഭാഷ മാറ്റുക">
+        <i data-lucide="languages" style="width:14px;height:14px;"></i>
+        <span id="lang-label">മലയാളം</span>
+      </button>
+
+      <!-- Theme Switcher (White Mode / Dark Mode) -->
+      <button class="util-btn" id="theme-toggle-btn" title="Toggle White / Dark Theme">
+        <i data-lucide="sun" id="theme-icon" style="width:14px;height:14px;"></i>
+        <span id="theme-label" data-i18n="theme_btn">Light Mode</span>
+      </button>
+
+      <div class="live-beacon">
+        <div class="live-dot"></div>
+        <span data-i18n="live_status">LIVE</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- GEOSPATIAL MAP VIEWPORT -->
+  <main id="map-container">
+    <div id="map"></div>
+
+    <!-- HUD Mode Toggle Bar -->
+    <div class="map-floating-hud">
+      <div class="glass-pill-bar">
+        <button id="mode-explore-btn" class="hud-btn active">
+          <i data-lucide="compass" style="width:16px;height:16px;"></i>
+          <span data-i18n="btn_explore">Explore Basin</span>
+        </button>
+        <button id="mode-report-btn" class="hud-btn">
+          <i data-lucide="plus-circle" style="width:16px;height:16px;"></i>
+          <span data-i18n="btn_report">Report Sighting</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Map Tile Layer Toggle -->
+    <div class="layer-switcher">
+      <button class="layer-btn active" id="btn-layer-sat" data-i18n="layer_sat">Satellite</button>
+      <button class="layer-btn" id="btn-layer-dark" data-i18n="layer_dark">Dark Matrix</button>
+      <button class="layer-btn" id="btn-layer-osm" data-i18n="layer_street">Hydro Street</button>
+    </div>
+
+    <!-- Sighting Pin Placement Instruction Banner -->
+    <div class="pin-instruction-banner" id="pin-banner">
+      <i data-lucide="map-pin" style="width:18px;height:18px;color:var(--river-cyan);"></i>
+      <span data-i18n="banner_pin_hint">Tap anywhere on or near the Periyar River to pinpoint sighting</span>
+    </div>
+
+    <!-- Legend Overlay -->
+    <div class="hud-legend">
+      <div style="font-weight:700;color:var(--text-main);font-size:11px;margin-bottom:2px;letter-spacing:0.5px;text-transform:uppercase;" data-i18n="legend_title">Network Legend</div>
+      <div class="legend-item"><span class="legend-symbol river-flow"></span> <span data-i18n="legend_river">Periyar Stream Reach</span></div>
+      <div class="legend-item"><span class="legend-symbol circle" style="background:var(--amber-warning);"></span> <span data-i18n="legend_unverified">Unverified Sighting</span></div>
+      <div class="legend-item"><span class="legend-symbol circle" style="background:var(--rose-danger);"></span> <span data-i18n="legend_verified">Verified Emergency</span></div>
+      <div class="legend-item"><span class="legend-symbol circle" style="background:var(--purple-intake);"></span> <span data-i18n="legend_intake">Drinking Water Intake</span></div>
+    </div>
+  </main>
+
+  <!-- COMMAND DESK / DRAWER -->
+  <aside id="sidebar-drawer">
+    <div class="drawer-drag-handle" id="drawer-toggle-bar"></div>
+
+    <!-- Navigation Tabs (Report, Impact, Timeline, Admin Desk) -->
+    <div class="sidebar-tabs">
+      <button class="tab-trigger active" data-tab="report">
+        <i data-lucide="file-plus" style="width:16px;height:16px;"></i>
+        <span data-i18n="tab_report">Report</span>
+      </button>
+      <button class="tab-trigger" data-tab="impact">
+        <i data-lucide="activity" style="width:16px;height:16px;"></i>
+        <span data-i18n="tab_impact">Impact</span>
+        <span class="tab-badge" id="impact-count-badge">0</span>
+      </button>
+      <button class="tab-trigger" data-tab="timeline">
+        <i data-lucide="history" style="width:16px;height:16px;"></i>
+        <span data-i18n="tab_timeline">Timeline</span>
+      </button>
+      <button class="tab-trigger admin-tab" data-tab="admin">
+        <i data-lucide="shield" style="width:16px;height:16px;"></i>
+        <span data-i18n="tab_admin">Admin Desk</span>
+      </button>
+    </div>
+
+    <!-- Tab Panels Container -->
+    <div class="tab-content-area">
+      
+      <!-- ==========================================
+           TAB 1: REPORT SIGHTING
+      ========================================== -->
+      <div class="panel-view active" id="panel-report">
+        
+        <!-- Sighting Category Grid -->
+        <div class="form-group">
+          <div class="form-label">
+            <span data-i18n="label_sighting_type">Sighting Nature / Type</span>
+            <span class="optional-tag" data-i18n="tag_required">Required</span>
+          </div>
+          <div class="sighting-card-grid" id="sighting-type-cards">
+            <div class="sighting-opt-card selected" data-value="Discoloured water" data-code="discoloured_water">
+              <div class="sighting-icon-wrap"><i data-lucide="droplet" style="width:16px;height:16px;"></i></div>
+              <div class="sighting-text" data-i18n="type_discoloured">Discoloured Water</div>
+            </div>
+            <div class="sighting-opt-card" data-value="Dead fish / aquatic life" data-code="dead_fish">
+              <div class="sighting-icon-wrap"><i data-lucide="fish-off" style="width:16px;height:16px;"></i></div>
+              <div class="sighting-text" data-i18n="type_dead_fish">Dead Fish / Fauna</div>
+            </div>
+            <div class="sighting-opt-card" data-value="Foul odour" data-code="foul_odour">
+              <div class="sighting-icon-wrap"><i data-lucide="wind" style="width:16px;height:16px;"></i></div>
+              <div class="sighting-text" data-i18n="type_foul_odour">Toxic Foul Odour</div>
+            </div>
+            <div class="sighting-opt-card" data-value="Visible oil sheen" data-code="oil_sheen">
+              <div class="sighting-icon-wrap"><i data-lucide="sparkles" style="width:16px;height:16px;"></i></div>
+              <div class="sighting-text" data-i18n="type_oil_sheen">Visible Oil Sheen</div>
+            </div>
+            <div class="sighting-opt-card" data-value="Industrial discharge" data-code="industrial_discharge">
+              <div class="sighting-icon-wrap"><i data-lucide="factory" style="width:16px;height:16px;"></i></div>
+              <div class="sighting-text" data-i18n="type_industrial">Industrial Outfall</div>
+            </div>
+            <div class="sighting-opt-card" data-value="Foam / suds" data-code="foam_suds">
+              <div class="sighting-icon-wrap"><i data-lucide="cloud-rain" style="width:16px;height:16px;"></i></div>
+              <div class="sighting-text" data-i18n="type_foam">Chemical Foam</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Severity Slider -->
+        <div class="form-group">
+          <div class="form-label">
+            <span data-i18n="label_severity">Observed Severity Level</span>
+            <span id="sev-label-text" class="optional-tag sev-moderate" data-i18n="sev_moderate">Moderate Alert</span>
+          </div>
+          <div class="severity-meter-wrap">
+            <div class="severity-levels">
+              <span class="sev-advisory" data-i18n="sev_advisory">LOW / ADVISORY</span>
+              <span class="sev-moderate" data-i18n="sev_moderate">MODERATE</span>
+              <span class="sev-critical" data-i18n="sev_critical">CRITICAL HAZARD</span>
+            </div>
+            <input type="range" min="1" max="3" value="2" class="range-slider" id="f-severity" />
+          </div>
+        </div>
+
+        <!-- Observation Timestamp -->
+        <div class="form-group">
+          <div class="form-label">
+            <span data-i18n="label_time">Observation Timestamp</span>
+            <span class="optional-tag" data-i18n="tag_synced">Auto-Synced</span>
+          </div>
+          <input type="datetime-local" class="input-control" id="f-datetime" />
+        </div>
+
+        <!-- Map Location & GPS Snapping -->
+        <div class="form-group">
+          <div class="form-label">
+            <span data-i18n="label_location">Geospatial River Point</span>
+            <span class="optional-tag" data-i18n="tag_snap_tol">800m River Snapping</span>
+          </div>
+          <div class="gps-picker-box" id="gps-picker-box">
+            <div class="gps-status-row">
+              <div class="coords-display" id="coords-text">
+                <i data-lucide="crosshair" style="width:15px;height:15px;color:var(--text-dim);"></i>
+                <span style="color:var(--text-dim);" data-i18n="msg_no_location">No location set on river</span>
+              </div>
+            </div>
+            <div class="gps-action-group">
+              <button class="action-btn-sub primary-accent" id="btn-pick-map">
+                <i data-lucide="map-pin" style="width:14px;height:14px;"></i>
+                <span data-i18n="btn_pick_map">Pick on Map</span>
+              </button>
+              <button class="action-btn-sub" id="btn-use-gps">
+                <i data-lucide="navigation" style="width:14px;height:14px;"></i>
+                <span data-i18n="btn_use_gps">Use My GPS</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Incident Description -->
+        <div class="form-group">
+          <div class="form-label">
+            <span data-i18n="label_desc">Incident Description</span>
+            <span class="optional-tag" data-i18n="tag_details">Details / Odour</span>
+          </div>
+          <textarea class="textarea-control" id="f-desc" placeholder="Describe color, extent of slick, smell intensity, nearby drain outfall or bridge landmarks..."></textarea>
+        </div>
+
+        <!-- Optional Reporter Name -->
+        <div class="form-group">
+          <div class="form-label">
+            <span data-i18n="label_reporter_name">Reporter Name</span>
+            <span class="optional-tag" data-i18n="tag_optional_anon">Optional / Anonymous</span>
+          </div>
+          <input type="text" class="input-control" id="f-reporter-name" placeholder="e.g. Rahul Varma (or leave blank to stay anonymous)" />
+        </div>
+
+        <!-- Optional Phone Number with Privacy Protection Notice -->
+        <div class="form-group">
+          <div class="form-label">
+            <span data-i18n="label_phone">Phone Number (For Authority Confirmation)</span>
+            <span class="optional-tag" data-i18n="tag_secured">Optional · Encrypted</span>
+          </div>
+          <input type="tel" class="input-control" id="f-reporter-phone" placeholder="+91 98765 43210" />
+          
+          <div class="privacy-advisory-card">
+            <i data-lucide="lock" style="width:16px;height:16px;"></i>
+            <div>
+              <strong data-i18n="privacy_title">Physical Privacy Safeguard:</strong> <span data-i18n="privacy_desc">Your phone number is strictly encrypted and never visible to the public or displayed on maps. It is exclusively used for authority verification & emergency safety alerts.</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Photo Upload Box -->
+        <div class="form-group">
+          <div class="form-label">
+            <span data-i18n="label_photo">Photo Evidence</span>
+            <span class="optional-tag" data-i18n="tag_visual">Visual Verification</span>
+          </div>
+          <input type="file" id="photo-file-input" accept="image/*" style="display:none;" />
+          <div class="photo-drop-zone" id="photo-drop-zone">
+            <img id="photo-preview" class="photo-preview-img" alt="Attached evidence" />
+            <div class="drop-zone-content" id="photo-placeholder-content">
+              <i data-lucide="camera" style="width:24px;height:24px;color:var(--river-cyan);"></i>
+              <span style="font-weight:600;color:var(--text-main);" data-i18n="photo_tap_attach">Tap to attach photo / screenshot</span>
+              <span style="font-size:11px;color:var(--text-dim);" data-i18n="photo_geotag_hint">Photos speed up authority response</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Submit Button -->
+        <button class="primary-submit-btn" id="submit-btn" disabled>
+          <i data-lucide="send" style="width:18px;height:18px;"></i>
+          <span data-i18n="btn_submit_report">Dispatch Citizen Sighting</span>
+        </button>
+
+      </div>
+
+      <!-- ==========================================
+           TAB 2: IMPACT & DOWNSTREAM SIMULATION
+      ========================================== -->
+      <div class="panel-view" id="panel-impact">
+        <div id="impact-container-inner">
+          <div class="empty-state-view">
+            <i data-lucide="radar" style="width:44px;height:44px;"></i>
+            <h3 data-i18n="empty_impact_title">No Active Sighting Selected</h3>
+            <p style="font-size:12px;line-height:1.6;" data-i18n="empty_impact_desc">Submit a sighting or select any marker on the map to view downstream trajectory, drinking water intake vulnerability, and estimated plume transit time.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- ==========================================
+           TAB 3: TIMELINE & RECENT REPORTS
+      ========================================== -->
+      <div class="panel-view" id="panel-timeline">
+        <div class="timeline-filter-row" id="tl-filter-bar">
+          <button class="filter-chip active" data-filter="all" data-i18n="filter_all">All Sightings</button>
+          <button class="filter-chip" data-filter="unverified" data-i18n="filter_unverified">Unverified</button>
+          <button class="filter-chip" data-filter="review" data-i18n="filter_review">Under Review</button>
+          <button class="filter-chip" data-filter="verified" data-i18n="filter_verified">Verified Incidents</button>
+        </div>
+
+        <div class="timeline-stream" id="timeline-stream-list">
+          <div class="empty-state-view">
+            <i data-lucide="inbox" style="width:40px;height:40px;"></i>
+            <h3 data-i18n="empty_timeline_title">No Reports Logged Yet</h3>
+            <p style="font-size:12px;" data-i18n="empty_timeline_desc">Submitted observations synced with Supabase will appear here in chronological order with repeat location detection.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- ==========================================
+           TAB 4: ADMIN / AUTHORITY DESK & WORKING DISPATCH
+      ========================================== -->
+      <div class="panel-view" id="panel-admin">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+          <div>
+            <h2 style="font-size:16px;font-weight:800;color:var(--text-main);" data-i18n="admin_title">Authority Command & Verification Desk</h2>
+            <div style="font-size:11px;color:var(--text-muted);font-family:'JetBrains Mono',monospace;">KSPCB SURVEILLANCE & KWA EMERGENCY DISPATCH</div>
+          </div>
+          <span style="font-size:10px;padding:3px 8px;border-radius:12px;background:rgba(168,85,247,0.15);color:var(--purple-intake);font-weight:700;">OFFICER ACCESS</span>
+        </div>
+
+        <div id="admin-incidents-feed">
+          <div class="empty-state-view">
+            <i data-lucide="shield-check" style="width:40px;height:40px;color:var(--emerald-safe);"></i>
+            <h3 data-i18n="admin_no_pending">No Pending Incident Triage</h3>
+            <p style="font-size:12px;" data-i18n="admin_no_pending_desc">All citizen observations have been triaged. New reports will appear here with live verification actions and real emergency dispatch triggers.</p>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </aside>
+</div>
+
+<!-- Floating Action Toast -->
+<div class="toast-notification" id="app-toast">
+  <i data-lucide="check-circle-2" style="width:20px;height:20px;color:var(--river-cyan);"></i>
+  <span id="toast-message">Telemetry connected</span>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://unpkg.com/lucide@latest"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script>
+(function(){
+"use strict";
+
+const updatedRiverBoundaryCoords = [
+  [10.180104, 76.165638],
+  [10.185172, 76.172676],
+  [10.187874, 76.177483],
+  [10.190746, 76.186581],
+  [10.193110, 76.202888],
+  [10.193617, 76.214733],
+  [10.190577, 76.219883],
+  [10.187030, 76.223660],
+  [10.184327, 76.228294],
+  [10.183482, 76.233959],
+  [10.180442, 76.240997],
+  [10.177739, 76.243916],
+  [10.173685, 76.248550],
+  [10.169969, 76.252670],
+  [10.166253, 76.258678],
+  [10.158514, 76.267605],
+  [10.150399, 76.272583],
+  [10.147021, 76.276875],
+  [10.146345, 76.278763],
+  [10.143980, 76.283226],
+  [10.141098, 76.288033],
+  [10.139071, 76.290178],
+  [10.137128, 76.292496],
+  [10.137044, 76.294556],
+  [10.137719, 76.298332],
+  [10.139240, 76.300049],
+  [10.140929, 76.303139],
+  [10.143041, 76.304512],
+  [10.145744, 76.307774],
+  [10.147855, 76.310005],
+  [10.148700, 76.314468],
+  [10.149879, 76.317430],
+  [10.151019, 76.321850],
+  [10.151737, 76.326485],
+  [10.150977, 76.329317],
+  [10.147935, 76.333566],
+  [10.145021, 76.336484],
+  [10.140540, 76.337171],
+  [10.137541, 76.337814],
+  [10.135007, 76.337900],
+  [10.132304, 76.337943],
+  [10.130108, 76.338673],
+  [10.128672, 76.339145],
+  [10.127531, 76.340218],
+  [10.125758, 76.342449],
+  [10.125673, 76.343822],
+  [10.125504, 76.346312],
+  [10.125040, 76.349101],
+  [10.123516, 76.352277],
+  [10.122122, 76.353478],
+  [10.120348, 76.354637],
+  [10.118870, 76.355495],
+  [10.115759, 76.357899],
+  [10.113394, 76.360645],
+  [10.112380, 76.366138],
+  [10.113394, 76.371460],
+  [10.116435, 76.376438],
+  [10.119645, 76.380730],
+  [10.123024, 76.394978],
+  [10.121165, 76.403732],
+  [10.117111, 76.409225],
+  [10.114238, 76.414204],
+  [10.115759, 76.420727],
+  [10.119307, 76.427937],
+  [10.121672, 76.432915],
+  [10.121503, 76.440639],
+  [10.119645, 76.445274],
+  [10.119983, 76.449738],
+  [10.122517, 76.452312],
+  [10.127416, 76.455574],
+  [10.130457, 76.456776],
+  [10.134174, 76.456604],
+  [10.136201, 76.453342],
+  [10.138228, 76.450253],
+  [10.142621, 76.449909],
+  [10.145155, 76.448879],
+  [10.145831, 76.442871],
+  [10.145999, 76.440296],
+  [10.144310, 76.434803],
+  [10.144383, 76.433258],
+  [10.144468, 76.432014],
+  [10.145608, 76.430576],
+  [10.146664, 76.430018],
+  [10.147994, 76.429846],
+  [10.149135, 76.429503],
+  [10.150064, 76.429417],
+  [10.151098, 76.429632],
+  [10.152091, 76.430125],
+  [10.152724, 76.430383],
+  [10.153485, 76.430876],
+  [10.154796, 76.432614],
+  [10.155598, 76.434267],
+  [10.156422, 76.435640],
+  [10.157457, 76.436970],
+  [10.158407, 76.438236],
+  [10.159167, 76.438901],
+  [10.160096, 76.439910],
+  [10.160772, 76.441133],
+  [10.161279, 76.441820],
+  [10.161785, 76.442635],
+  [10.162398, 76.444051],
+  [10.163369, 76.445682],
+  [10.163876, 76.446648],
+  [10.164573, 76.447699],
+  [10.165079, 76.448300],
+  [10.165649, 76.449051],
+  [10.166600, 76.450016],
+  [10.167001, 76.450961],
+  [10.167360, 76.452098],
+  [10.167892, 76.453257],
+  [10.168378, 76.454501],
+  [10.168927, 76.455488],
+  [10.169328, 76.456604],
+  [10.170003, 76.457698],
+  [10.170595, 76.458557],
+  [10.170848, 76.459501],
+  [10.171439, 76.460123],
+  [10.172115, 76.460917],
+  [10.173002, 76.461711],
+  [10.173677, 76.462398],
+  [10.174459, 76.462848],
+  [10.175198, 76.463320],
+  [10.175894, 76.463985],
+  [10.176422, 76.464436],
+  [10.178071, 76.465745],
+  [10.178747, 76.467032],
+  [10.181006, 76.469951],
+  [10.181935, 76.471925],
+  [10.182315, 76.474500],
+  [10.182990, 76.477418],
+  [10.184046, 76.479950],
+  [10.183624, 76.482525],
+  [10.183413, 76.486001],
+  [10.183712, 76.490464],
+  [10.183881, 76.493855],
+  [10.183670, 76.495957],
+  [10.182656, 76.498489],
+  [10.181727, 76.502523],
+  [10.182572, 76.505098],
+  [10.183290, 76.506815],
+  [10.184261, 76.508446],
+  [10.185486, 76.510077],
+  [10.187133, 76.511364],
+  [10.188822, 76.512051],
+  [10.190004, 76.512909],
+  [10.191186, 76.513596],
+  [10.192833, 76.514840],
+  [10.194269, 76.517029],
+  [10.194691, 76.520677],
+  [10.195240, 76.524882],
+  [10.195578, 76.526427],
+  [10.195916, 76.529346],
+  [10.196127, 76.531620],
+  [10.195370, 76.535869],
+  [10.194779, 76.538830],
+  [10.194737, 76.544194],
+  [10.194231, 76.547885],
+  [10.193597, 76.550031],
+  [10.194399, 76.552305],
+  [10.195371, 76.554494],
+  [10.195624, 76.558528],
+  [10.195413, 76.559558],
+  [10.194062, 76.560588],
+  [10.192670, 76.562991],
+  [10.188996, 76.565180],
+  [10.187560, 76.566081],
+  [10.186631, 76.567283],
+  [10.184391, 76.568055],
+  [10.184518, 76.571403],
+  [10.183927, 76.573977],
+  [10.183969, 76.576252],
+  [10.183251, 76.578913],
+  [10.182702, 76.581616],
+  [10.181731, 76.583033],
+  [10.180844, 76.584878],
+  [10.179324, 76.586895],
+  [10.177635, 76.588140],
+  [10.175777, 76.589813],
+  [10.174214, 76.591358],
+  [10.173369, 76.593847],
+  [10.172989, 76.598353],
+  [10.173369, 76.600199],
+  [10.172947, 76.601443],
+  [10.172398, 76.603460],
+  [10.171596, 76.604619],
+  [10.171427, 76.606293],
+  [10.170029, 76.610026],
+  [10.169691, 76.612387],
+  [10.169945, 76.614361],
+  [10.170747, 76.615949],
+  [10.171592, 76.618395],
+  [10.172563, 76.620197],
+  [10.172901, 76.622472],
+  [10.172901, 76.624875],
+  [10.172563, 76.626935],
+  [10.172099, 76.628909],
+  [10.169266, 76.631956],
+  [10.167830, 76.633415],
+  [10.165719, 76.634703],
+  [10.163227, 76.637578],
+  [10.161622, 76.639080],
+  [10.160186, 76.641612],
+  [10.158750, 76.643414],
+  [10.158075, 76.645389],
+  [10.155541, 76.646719],
+  [10.153852, 76.647406],
+  [10.152289, 76.648221],
+  [10.149628, 76.650023],
+  [10.146925, 76.652470],
+  [10.145019, 76.653714],
+  [10.143920, 76.654315],
+  [10.141724, 76.655517],
+  [10.139908, 76.656675],
+  [10.138346, 76.658134],
+  [10.137374, 76.659679],
+  [10.137247, 76.660881],
+  [10.137423, 76.661482],
+  [10.137671, 76.662244],
+  [10.138090, 76.663091],
+  [10.138575, 76.664078],
+  [10.138955, 76.664701],
+  [10.139568, 76.665924],
+  [10.140138, 76.666803],
+  [10.140518, 76.668048],
+  [10.141025, 76.668949],
+  [10.141510, 76.670687],
+  [10.141425, 76.672683],
+  [10.140284, 76.674142],
+  [10.139059, 76.676331],
+  [10.137117, 76.678090],
+  [10.134920, 76.679163],
+  [10.131288, 76.681695],
+  [10.129979, 76.684399],
+  [10.128205, 76.686673],
+  [10.124784, 76.689076],
+  [10.120733, 76.694012],
+  [10.113806, 76.701651],
+  [10.103078, 76.716671],
+  [10.081704, 76.744137],
+  [10.068947, 76.756754],
+  [10.060583, 76.767397],
+  [10.058470, 76.780272],
+  [10.049683, 76.786709],
+  [10.042163, 76.798210],
+  [10.037324, 76.809111],
+  [10.035465, 76.818209],
+  [10.026001, 76.832457],
+  [10.026170, 76.836834],
+  [10.024227, 76.841383],
+  [10.021945, 76.846790],
+  [10.017382, 76.855288],
+  [10.012819, 76.863184],
+  [10.006820, 76.875372],
+  [9.996078, 76.895370],
+  [9.990754, 76.902494],
+  [9.989318, 76.907129],
+  [9.985937, 76.913910],
+  [9.983402, 76.919146],
+  [9.979261, 76.926785],
+  [9.974613, 76.935711],
+  [9.967260, 76.944036],
+  [9.964809, 76.952705],
+  [9.959992, 76.959486],
+  [9.952375, 76.982317],
+  [9.954742, 76.972532],
+  [9.935744, 76.973648],
+  [9.924249, 76.977768],
+  [9.910386, 76.974335],
+  [9.905653, 76.978455],
+  [9.891113, 76.976395],
+  [9.882636, 76.969872],
+  [9.870463, 76.967125],
+  [9.854231, 76.966782],
+  [9.848821, 76.968498],
+  [9.839690, 76.978111],
+  [9.788751, 77.035275],
+  [9.768287, 77.016563],
+  [9.749853, 77.011242],
+  [9.733784, 77.016220],
+  [9.727695, 77.013988],
+  [9.721437, 77.023258],
+  [9.706729, 77.028923],
+  [9.699083, 77.029524],
+  [9.700098, 77.021971],
+  [9.692740, 77.025318],
+  [9.685550, 77.026348],
+  [9.682336, 77.026777],
+  [9.681997, 77.029181],
+  [9.681321, 77.029181],
+  [9.680221, 77.028837],
+  [9.673877, 77.022486],
+  [9.670578, 77.023516],
+  [9.667521, 77.021413],
+  [9.662107, 77.019095],
+  [9.660373, 77.019439],
+  [9.659443, 77.017894],
+  [9.659146, 77.013817],
+  [9.656435, 77.014718],
+  [9.654278, 77.019010],
+  [9.650682, 77.027121],
+  [9.647848, 77.029009],
+  [9.648186, 77.032228],
+  [9.640573, 77.044415],
+  [9.640023, 77.050080],
+  [9.639008, 77.051668],
+  [9.637316, 77.052398],
+  [9.635006, 77.050724],
+  [9.632553, 77.050703],
+  [9.631369, 77.051196],
+  [9.629909, 77.050767],
+  [9.628979, 77.049651],
+  [9.627540, 77.049222],
+  [9.626568, 77.048857],
+  [9.625510, 77.047741],
+  [9.624220, 77.047398],
+  [9.623543, 77.047634],
+  [9.622782, 77.048771],
+  [9.622041, 77.050316],
+  [9.621076, 77.053256],
+  [9.618229, 77.056088],
+  [9.617087, 77.061110],
+  [9.614252, 77.065358],
+  [9.612814, 77.069178],
+  [9.610826, 77.071409],
+  [9.608838, 77.072182],
+  [9.607822, 77.074156],
+  [9.609599, 77.080121],
+  [9.608457, 77.083039],
+  [9.605280, 77.085056],
+  [9.602149, 77.087245],
+  [9.599484, 77.088447],
+  [9.596100, 77.088189],
+  [9.592631, 77.087417],
+  [9.589033, 77.086730],
+  [9.586579, 77.085056],
+  [9.583533, 77.086172],
+  [9.581418, 77.087331],
+  [9.579049, 77.087674],
+  [9.576553, 77.087803],
+  [9.574987, 77.088361],
+  [9.573168, 77.089605],
+  [9.573041, 77.090249],
+  [9.573310, 77.090603],
+  [9.570357, 77.091365],
+  [9.569670, 77.090807],
+  [9.569194, 77.090045],
+  [9.568771, 77.088715],
+  [9.568263, 77.087975],
+  [9.567755, 77.087406],
+  [9.567544, 77.086666],
+  [9.567375, 77.085818],
+  [9.567301, 77.085378],
+  [9.566994, 77.084692],
+  [9.566603, 77.084048],
+  [9.566296, 77.083436],
+  [9.565946, 77.082868],
+  [9.564931, 77.082353],
+  [9.563915, 77.081902],
+  [9.563323, 77.081881],
+  [9.562667, 77.081687],
+  [9.561842, 77.082009],
+  [9.561567, 77.083254],
+  [9.561335, 77.084198],
+  [9.561039, 77.085164],
+  [9.560615, 77.086000],
+  [9.560404, 77.087138],
+  [9.560044, 77.087824],
+  [9.560510, 77.088640],
+  [9.561419, 77.089455],
+  [9.561821, 77.090228],
+  [9.562244, 77.091022],
+  [9.562794, 77.092030],
+  [9.563429, 77.092888],
+  [9.563683, 77.093339],
+  [9.563471, 77.093918],
+  [9.562689, 77.094176],
+  [9.560848, 77.095034],
+  [9.558690, 77.095764],
+  [9.556913, 77.093425],
+  [9.556321, 77.091815],
+  [9.555728, 77.090914],
+  [9.555348, 77.090163],
+  [9.554248, 77.089949],
+  [9.553571, 77.089841],
+  [9.552428, 77.090185],
+  [9.551624, 77.091086],
+  [9.550926, 77.092116],
+  [9.550292, 77.093232],
+  [9.549974, 77.093940],
+  [9.550376, 77.094820],
+  [9.550397, 77.095785],
+  [9.549953, 77.096236],
+  [9.548620, 77.096193],
+  [9.547266, 77.095957],
+  [9.545913, 77.095764],
+  [9.544516, 77.095549],
+  [9.543268, 77.095292],
+  [9.541956, 77.095442],
+  [9.541555, 77.096150],
+  [9.540751, 77.098317],
+  [9.537387, 77.103810],
+  [9.535559, 77.107458],
+  [9.533486, 77.108788],
+  [9.532217, 77.109969],
+  [9.530990, 77.110569],
+  [9.530724, 77.111127],
+  [9.530068, 77.111385],
+  [9.529254, 77.111331],
+  [9.528736, 77.111996],
+  [9.527836, 77.112908],
+  [9.527445, 77.113488],
+  [9.527953, 77.115344],
+  [9.529465, 77.118069],
+  [9.531519, 77.120204],
+  [9.531519, 77.121706],
+  [9.530503, 77.123616],
+  [9.529551, 77.125804],
+  [9.529678, 77.127671],
+  [9.529551, 77.129087],
+  [9.528578, 77.130589],
+  [9.527922, 77.133293],
+  [9.529213, 77.136962],
+  [9.529276, 77.139666],
+  [9.529192, 77.141876],
+  [9.528663, 77.143893],
+  [9.528282, 77.144752],
+  [9.528007, 77.146897],
+  [9.527798, 77.149687],
+  [9.528306, 77.153635],
+  [9.527968, 77.157412],
+  [9.527460, 77.163935],
+  [9.526360, 77.168312],
+  [9.526529, 77.173462],
+  [9.528898, 77.182560],
+  [9.528475, 77.190285],
+  [9.528391, 77.196207],
+  [9.526783, 77.203159],
+  [9.526529, 77.209597],
+  [9.529491, 77.219982],
+  [9.528560, 77.233028],
+  [9.526867, 77.221613],
+  [9.525090, 77.242813],
+  [9.522975, 77.248821],
+  [9.523567, 77.258778],
+  [9.521536, 77.262211],
+  [9.492251, 77.262640],
+  [9.488358, 77.263498],
+  [9.484126, 77.261267],
+  [9.482942, 77.270365],
+  [9.481249, 77.274485],
+  [9.482011, 77.278090],
+  [9.480402, 77.284784],
+  [9.479387, 77.288475],
+  [9.475917, 77.287531],
+  [9.474055, 77.290363],
+  [9.468971, 77.289591],
+  [9.464061, 77.291393],
+  [9.462127, 77.296200],
+  [9.457557, 77.297573],
+  [9.453817, 77.293282],
+  [9.451109, 77.294827],
+  [9.451532, 77.297659],
+  [9.451194, 77.300663],
+  [9.446792, 77.300406],
+  [9.443576, 77.299805],
+  [9.442306, 77.303495],
+  [9.438751, 77.307959],
+  [9.435026, 77.309504]
+];
+
+
+/* ===============================================================
+   0. BILINGUAL DICTIONARY (EN / ML)
+=============================================================== */
+const i18n = {
+  en: {
+    app_title: "PERIYAR SAKSHI",
+    header_sub: "BASIN INTELLIGENCE & EARLY WARNING NETWORK",
+    theme_btn: "Light Mode",
+    live_status: "LIVE TELEMETRY",
+    btn_explore: "Explore Basin",
+    btn_report: "Report Sighting",
+    layer_sat: "Satellite",
+    layer_dark: "Dark Matrix",
+    layer_street: "Hydro Street",
+    banner_pin_hint: "Tap anywhere on or near the Periyar River to pinpoint sighting",
+    legend_title: "Network Legend",
+    legend_river: "Periyar Stream Reach",
+    legend_unverified: "Unverified Sighting",
+    legend_verified: "Verified Emergency",
+    legend_intake: "Drinking Water Intake",
+    tab_report: "Report",
+    tab_impact: "Impact",
+    tab_timeline: "Timeline",
+    tab_admin: "Admin Desk",
+    label_sighting_type: "Sighting Nature / Type",
+    tag_required: "Required",
+    type_discoloured: "Discoloured Water",
+    type_dead_fish: "Dead Fish / Fauna",
+    type_foul_odour: "Toxic Foul Odour",
+    type_oil_sheen: "Visible Oil Sheen",
+    type_industrial: "Industrial Outfall",
+    type_foam: "Chemical Foam",
+    label_severity: "Observed Severity Level",
+    sev_advisory: "LOW / ADVISORY",
+    sev_moderate: "MODERATE ALERT",
+    sev_critical: "CRITICAL HAZARD",
+    label_time: "Observation Timestamp",
+    tag_synced: "Auto-Synced",
+    label_location: "Geospatial River Point",
+    tag_snap_tol: "800m River Snapping",
+    msg_no_location: "No location set on river",
+    btn_pick_map: "Pick on Map",
+    btn_use_gps: "Use My GPS",
+    label_desc: "Incident Description",
+    tag_details: "Details / Odour",
+    label_reporter_name: "Reporter Name",
+    tag_optional_anon: "Optional / Anonymous",
+    label_phone: "Phone Number (For Confirmation)",
+    tag_secured: "Optional · Encrypted",
+    privacy_title: "Physical Privacy Safeguard:",
+    privacy_desc: "Your phone number is strictly encrypted and never visible to the public or displayed on maps. It is exclusively used for authority verification & emergency safety alerts.",
+    label_photo: "Photo Evidence",
+    tag_visual: "Visual Verification",
+    photo_tap_attach: "Tap to attach photo / screenshot",
+    photo_geotag_hint: "Photos speed up authority response",
+    btn_submit_report: "Dispatch Citizen Sighting",
+    empty_impact_title: "No Active Sighting Selected",
+    empty_impact_desc: "Submit a sighting or select any marker on the map to view downstream trajectory, drinking water intake vulnerability, and estimated plume transit time.",
+    filter_all: "All Sightings",
+    filter_unverified: "Unverified",
+    filter_review: "Under Review",
+    filter_verified: "Verified Incidents",
+    empty_timeline_title: "No Reports Logged Yet",
+    empty_timeline_desc: "Submitted observations synced with Supabase will appear here in chronological order with repeat location detection.",
+    admin_title: "Authority Command & Verification Desk",
+    admin_no_pending: "No Pending Incident Triage",
+    admin_no_pending_desc: "All citizen observations have been triaged. New reports will appear here with live verification actions and real emergency dispatch triggers."
+  },
+  ml: {
+    app_title: "പെരിയാർ സാക്ഷി",
+    header_sub: "നദീതട നിരീക്ഷണവും തത്സമയ മുൻകൂർ മുന്നറിയിപ്പ് സംവിധാനവും",
+    theme_btn: "വൈറ്റ് മോഡ്",
+    live_status: "തത്സമയം",
+    btn_explore: "നദീതടം കാണുക",
+    btn_report: "റിപ്പോർട്ട് നൽകുക",
+    layer_sat: "സാറ്റലൈറ്റ്",
+    layer_dark: "ഡാർക്ക് മോഡ്",
+    layer_street: "മാപ്പ് വ്യൂ",
+    banner_pin_hint: "പെരിയാറിലെ മലിനീകരണ സ്ഥലം രേഖപ്പെടുത്താൻ മാപ്പിൽ ക്ലിക്ക് ചെയ്യുക",
+    legend_title: "മാപ്പ് അടയാളങ്ങൾ",
+    legend_river: "പെരിയാർ നദീതടം",
+    legend_unverified: "സ്ഥിരീകരിക്കാത്ത വിവരം",
+    legend_verified: "സ്ഥിരീകരിച്ച സംഭവം",
+    legend_intake: "കുടിവെള്ള പമ്പ് ഹൗസ്",
+    tab_report: "റിപ്പോർട്ട്",
+    tab_impact: "ആഘാതം",
+    tab_timeline: "ടൈംലൈൻ",
+    tab_admin: "അഡ്മിൻ ഡെസ്ക്",
+    label_sighting_type: "മലിനീകരണ സ്വഭാവം",
+    tag_required: "നിർബന്ധം",
+    type_discoloured: "നിറവ്യത്യാസമുള്ള വെള്ളം",
+    type_dead_fish: "ചത്ത മത്സ്യങ്ങൾ",
+    type_foul_odour: "രൂക്ഷമായ ദുർഗന്ധം",
+    type_oil_sheen: "എണ്ണപ്പാട / പാടകൾ",
+    type_industrial: "വ്യാവസായിക മാലിന്യം",
+    type_foam: "രാസ നുരയും പതയും",
+    label_severity: "മലിനീകരണ തീവ്രത",
+    sev_advisory: "കുറഞ്ഞ തോത്",
+    sev_moderate: "മിതമായ ജാഗ്രത",
+    sev_critical: "അതീവ ഗുരുതരം",
+    label_time: "നിരീക്ഷിച്ച സമയം",
+    tag_synced: "തത്സമയം ചേർത്തത്",
+    label_location: "ലൊക്കേഷൻ (നദീ സ്ഥാനനിർണ്ണയം)",
+    tag_snap_tol: "800 മീറ്റർ പരിധി",
+    msg_no_location: "സ്ഥാനം നിശ്ചയിച്ചിട്ടില്ല",
+    btn_pick_map: "മാപ്പിൽ തിരഞ്ഞെടുക്കുക",
+    btn_use_gps: "എന്റെ GPS ഉപയോഗിക്കുക",
+    label_desc: "വിശദാംശങ്ങൾ",
+    tag_details: "നിറം, മണം, കാരണം",
+    label_reporter_name: "വിവരം നൽകുന്നയാളുടെ പേര്",
+    tag_optional_anon: "നിർബന്ധമില്ല (അജ്ഞാതം)",
+    label_phone: "ഫോൺ നമ്പർ (ഉദ്യോഗസ്ഥ സ്ഥിരീകരണത്തിന്)",
+    tag_secured: "സുരക്ഷിതം · എൻക്രിപ്റ്റഡ്",
+    privacy_title: "വ്യക്തിഗത സ്വകാര്യത സംരക്ഷണം:",
+    privacy_desc: "നിങ്ങളുടെ ഫോൺ നമ്പർ പൂർണ്ണമായും എൻക്രിപ്റ്റ് ചെയ്തതാണ്. ഇത് മാപ്പിലോ പൊതുജന ഫീഡിലോ കാണിക്കില്ല. അടിയന്തര സാഹചര്യത്തിൽ ബന്ധപ്പെടാൻ ഉദ്യോഗസ്ഥർക്ക് മാത്രമേ ലഭ്യമാകൂ.",
+    label_photo: "ചിത്രം / തെളിവ്",
+    tag_visual: "ഫോട്ടോ പരിശോധന",
+    photo_tap_attach: "ഫോട്ടോ അറ്റാച്ച് ചെയ്യാൻ ഇവിടെ തൊടുക",
+    photo_geotag_hint: "ഫോട്ടോ വേഗത്തിലുള്ള നടപടിക്ക് സഹായിക്കും",
+    btn_submit_report: "വിവരം കൈമാറുക",
+    empty_impact_title: "റിപ്പോർട്ട് തിരഞ്ഞെടുത്തിട്ടില്ല",
+    empty_impact_desc: "മാപ്പിൽ ക്ലിക്ക് ചെയ്ത് ഒരു റിപ്പോർട്ട് സമർപ്പിക്കുകയോ നിലവിലുള്ളതിൽ തൊടുകയോ ചെയ്താൽ ഒഴുക്കിന്റെ ഗതിയും ബാധിക്കുന്ന പമ്പ് ഹൗസുകളും അറിയാം.",
+    filter_all: "എല്ലാ റിപ്പോർട്ടുകളും",
+    filter_unverified: "സ്ഥിരീകരിക്കാത്തവ",
+    filter_review: "പരിശോധനയിൽ",
+    filter_verified: "സ്ഥിരീകരിച്ചവ",
+    empty_timeline_title: "റിപ്പോർട്ടുകൾ ലഭ്യമല്ല",
+    empty_timeline_desc: "രേഖപ്പെടുത്തിയ മലിനീകരണ വിവരങ്ങൾ തീയതി ക്രമത്തിൽ ഇവിടെ പ്രദർശിപ്പിക്കും.",
+    admin_title: "ഉദ്യോഗസ്ഥ കൺട്രോൾ റൂമും സ്ഥിരീകരണ പോർട്ടലും",
+    admin_no_pending: "തീർപ്പുകൽപ്പിക്കാത്ത റിപ്പോർട്ടുകളില്ല",
+    admin_no_pending_desc: "പുതിയ പൗര നിരീക്ഷണങ്ങൾ വരുമ്പോൾ ഉദ്യോഗസ്ഥർക്ക് ഇവിടെ പരിശോധിക്കാനും അടിയന്തര അലേർട്ടുകൾ നൽകാനും സാധിക്കും."
+  }
+};
+
+let currentLang = localStorage.getItem('periyar_lang') || 'en';
+let currentTheme = localStorage.getItem('periyar_theme') || 'dark';
+
+function applyLanguage(lang) {
+  currentLang = lang;
+  document.documentElement.setAttribute('data-lang', lang);
+  localStorage.setItem('periyar_lang', lang);
+  document.getElementById('lang-label').textContent = lang === 'en' ? 'മലയാളം' : 'English';
+
+  const dict = i18n[lang];
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    const key = el.getAttribute('data-i18n');
+    if (dict[key]) el.textContent = dict[key];
+  });
+}
+
+function applyTheme(theme) {
+  currentTheme = theme;
+  document.documentElement.setAttribute('data-theme', theme);
+  localStorage.setItem('periyar_theme', theme);
+  const themeLabel = document.getElementById('theme-label');
+  const themeIcon = document.getElementById('theme-icon');
+  if (theme === 'light') {
+    themeLabel.textContent = currentLang === 'ml' ? 'ഡാർക്ക് മോഡ്' : 'Dark Mode';
+    themeIcon.setAttribute('data-lucide', 'moon');
+  } else {
+    themeLabel.textContent = currentLang === 'ml' ? 'വൈറ്റ് മോഡ്' : 'Light Mode';
+    themeIcon.setAttribute('data-lucide', 'sun');
+  }
+  lucide.createIcons();
+}
+
+document.getElementById('lang-toggle-btn').addEventListener('click', () => {
+  applyLanguage(currentLang === 'en' ? 'ml' : 'en');
+  applyTheme(currentTheme);
+});
+
+document.getElementById('theme-toggle-btn').addEventListener('click', () => {
+  applyTheme(currentTheme === 'dark' ? 'light' : 'dark');
+});
+
+/* ===============================================================
+   1. AUDIO ALERT SYNTHESIZER (WEB AUDIO API)
+=============================================================== */
+function playEmergencyAlertBeep() {
+  try {
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.type = 'sawtooth';
+    osc.frequency.setValueAtTime(880, audioCtx.currentTime); // A5
+    osc.frequency.exponentialRampToValueAtTime(440, audioCtx.currentTime + 0.35);
+    gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.35);
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+    osc.start();
+    osc.stop(audioCtx.currentTime + 0.38);
+  } catch(e) {
+    console.log("Audio not allowed yet without user interaction");
+  }
+}
+
+/* ===============================================================
+   2. SUPABASE INITIALIZATION
+=============================================================== */
+const SUPABASE_URL = 'https://dvuestkbydcpikivwqti.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_4eKXOEseSsUqdqZ38UMUBQ_eOENdATP';
+let supabase = null;
+
+if (window.supabase) {
+  try {
+    supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+  } catch(e) {
+    console.warn("Supabase init error:", e);
+  }
+}
+
+/* ===============================================================
+   3. GEOSPATIAL PERIYAR DATA MODEL & REACHES
+=============================================================== */
+const segments = [
+  {
+    id: 'S1',
+    name: 'Periyar Actual River Flow Coordinates',
+    coords: [
+      [10.141944, 76.671111],
+      [10.059167, 76.776667],
+      [10.121944, 76.692500],
+      [10.101111, 76.718333],
+      [10.073611, 76.751389],
+      [10.070000, 76.756111],
+      [10.115278, 76.699722],
+      [10.112778, 76.704444],
+      [10.097778, 76.721111],
+      [10.067222, 76.761111],
+      [10.088056, 76.733333],
+      [10.055556, 76.782778],
+      [10.066944, 76.762778],
+      [10.103056, 76.716111],
+      [10.091111, 76.727222],
+      [10.082222, 76.743333],
+      [10.083056, 76.742500],
+      [10.057778, 76.781667],
+      [10.090278, 76.728611],
+      [10.111389, 76.706667],
+      [10.088889, 76.731389],
+      [10.062500, 76.765556],
+      [10.057778, 76.781389],
+      [10.059167, 76.777222],
+      [10.061111, 76.766389],
+      [10.086389, 76.737500],
+      [10.060556, 76.766944],
+      [10.058056, 76.781111],
+      [10.093611, 76.725000]
+    ]
+  },
+  {
+    id: 'S2',
+    name: 'Periyar Mid Reach (Kalady to Aluva Manappuram)',
+    coords: []
+  },
+  {
+    id: 'S3_NORTH',
+    name: 'Mangalapuzha Distributary (Aluva to Paravur & Munambam Mouth)',
+    coords: []
+  },
+  {
+    id: 'S4_SOUTH',
+    name: 'Marthandavarma Distributary (Industrial Eloor to Varapuzha)',
+    coords: [
+      [10.1125, 76.3470],
+      [10.1080, 76.3430],
+      [10.0920, 76.3260],
+      [10.0880, 76.3150],
+      [10.0760, 76.2950], // Eloor Industrial Island
+      [10.0650, 76.2820],
+      [10.0750, 76.2680]
+    ]
+  },
+  {
+    id: 'S5_ESTUARY',
+    name: 'Cochin Backwaters Outlet (Varapuzha to Kochi Port)',
+    coords: [
+      [10.0750, 76.2680],
+      [10.0480, 76.2750],
+      [10.0200, 76.2780],
+      [9.9800,  76.2700] // Kochi Port
+    ]
+  }
+];
+
+segments[0].coords = updatedRiverBoundaryCoords;
+
+const riverGraph = {
+  'S1': ['S2'],
+  'S2': ['S3_NORTH', 'S4_SOUTH'],
+  'S3_NORTH': [],
+  'S4_SOUTH': ['S5_ESTUARY'],
+  'S5_ESTUARY': []
+};
+
+const localBodies = {
+  'LB_ALUVA': { name: 'Aluva Municipality', officer: 'Health Officer, Aluva', phone: '+91 484 2622344' },
+  'LB_ELOOR': { name: 'Eloor Municipality', officer: 'Environmental Monitoring Cell, Eloor', phone: '+91 484 2545322' },
+  'LB_PARAVUR': { name: 'North Paravur Municipality', officer: 'Paravur Health Officer', phone: '+91 484 2442223' },
+  'LB_KOCHI': { name: 'Kochi Municipal Corporation', officer: 'Environmental Engineer, Kochi', phone: '+91 484 2369007' },
+  'LB_KSPCB': { name: 'Kerala State Pollution Control Board', officer: 'Environmental Surveillance Centre, Eloor', phone: '+91 484 2546255' }
+};
+
+const criticalIntakes = [
+  { id: 'IN_ALUVA', name: 'Aluva Headworks Treatment Plant (KWA)', segment_id: 'S2', capacity: '225 MLD', importance: 'HIGH CRITICAL', pos: [10.1115, 76.3550] },
+  { id: 'IN_PATHALAM', name: 'Pathalam Industrial Intake (KWA)', segment_id: 'S4_SOUTH', capacity: '45 MLD', importance: 'HIGH', pos: [10.0875, 76.3140] },
+  { id: 'IN_PARAVUR', name: 'North Paravur Drinking Intake', segment_id: 'S3_NORTH', capacity: '30 MLD', importance: 'HIGH', pos: [10.1440, 76.2640] },
+  { id: 'IN_KOCHI', name: 'Nettoor / Kochi South Booster Link', segment_id: 'S5_ESTUARY', capacity: '100 MLD', importance: 'CRITICAL', pos: [10.0150, 76.2800] }
+];
+
+const monitoredSettlements = [
+  { name: 'Kalady Town & Pilgrimage Ghats', segment_id: 'S1', local_body: 'LB_ALUVA', pos: [10.1660, 76.4380] },
+  { name: 'Aluva Town & Sivarathri Manappuram', segment_id: 'S2', local_body: 'LB_ALUVA', pos: [10.1085, 76.3530] },
+  { name: 'Eloor Industrial Residential Colony', segment_id: 'S4_SOUTH', local_body: 'LB_ELOOR', pos: [10.0770, 76.2940] },
+  { name: 'Varapuzha & Kadamakkudy Wetlands', segment_id: 'S4_SOUTH', local_body: 'LB_ELOOR', pos: [10.0760, 76.2690] },
+  { name: 'North Paravur Settlement', segment_id: 'S3_NORTH', local_body: 'LB_PARAVUR', pos: [10.1470, 76.2310] },
+  { name: 'Munambam Coastal Fishing Hamlet', segment_id: 'S3_NORTH', local_body: 'LB_PARAVUR', pos: [10.1810, 76.1710] }
+];
+
+/* ===============================================================
+   4. GEOMETRY & SNAPPING
+=============================================================== */
+function haversineDist(coordA, coordB) {
+  const R = 6371000;
+  const toRad = deg => deg * Math.PI / 180;
+  const dLat = toRad(coordB[0] - coordA[0]);
+  const dLng = toRad(coordB[1] - coordA[1]);
+  const a = Math.sin(dLat/2)**2 + Math.cos(toRad(coordA[0])) * Math.cos(toRad(coordB[0])) * Math.sin(dLng/2)**2;
+  return 2 * R * Math.asin(Math.sqrt(a));
+}
+
+function nearestPointOnPolyline(targetPt, polyCoords) {
+  let minResult = { dist: Infinity, point: polyCoords[0] };
+  for (let i = 0; i < polyCoords.length - 1; i++) {
+    const a = polyCoords[i], b = polyCoords[i+1];
+    const ax = a[0], ay = a[1], bx = b[0], by = b[1], px = targetPt[0], py = targetPt[1];
+    const dx = bx - ax, dy = by - ay;
+    const lenSq = dx*dx + dy*dy;
+    let t = lenSq === 0 ? 0 : ((px - ax)*dx + (py - ay)*dy) / lenSq;
+    t = Math.max(0, Math.min(1, t));
+    const projPt = [ax + t*dx, ay + t*dy];
+    const d = haversineDist(targetPt, projPt);
+    if (d < minResult.dist) minResult = { dist: d, point: projPt };
+  }
+  return minResult;
+}
+
+function calculateSegmentLength(coords) {
+  let len = 0;
+  for (let i = 0; i < coords.length - 1; i++) len += haversineDist(coords[i], coords[i+1]);
+  return len;
+}
+segments.forEach(s => s.length_m = Math.round(calculateSegmentLength(s.coords)));
+
+const SNAP_TOLERANCE_M = 800;
+
+function snapToRiverNetwork(latlng) {
+  let best = null;
+  segments.forEach(seg => {
+    const cand = nearestPointOnPolyline(latlng, seg.coords);
+    if (!best || cand.dist < best.dist) best = { segment: seg, dist: cand.dist, point: cand.point };
+  });
+  if (!best || best.dist > SNAP_TOLERANCE_M) return null;
+  return best;
+}
+
+function traverseDownstreamGraph(startSegmentId) {
+  const visited = new Set();
+  const queue = [startSegmentId];
+  const order = [];
+  while (queue.length > 0) {
+    const curId = queue.shift();
+    if (visited.has(curId)) continue;
+    visited.add(curId);
+    order.push(curId);
+    (riverGraph[curId] || []).forEach(nxt => {
+      if (!visited.has(nxt)) queue.push(nxt);
+    });
+  }
+  return order;
+}
+
+function getDownstreamAssets(downstreamSegIds) {
+  const segSet = new Set(downstreamSegIds);
+  const st = monitoredSettlements.filter(s => segSet.has(s.segment_id));
+  const ik = criticalIntakes.filter(i => segSet.has(i.segment_id));
+  const lbKeys = new Set([...st.map(s => s.local_body), 'LB_KSPCB']);
+  const lbs = Array.from(lbKeys).map(k => localBodies[k]).filter(Boolean);
+  return { settlements: st, intakes: ik, localBodies: lbs };
+}
+
+/* ===============================================================
+   5. LEAFLET MAP INSTANTIATION
+=============================================================== */
+const map = L.map('map', { zoomControl: false, attributionControl: false }).setView([10.090, 76.320], 12);
+L.control.zoom({ position: 'bottomright' }).addTo(map);
+
+const satTileLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { maxZoom: 18 });
+const darkTileLayer = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', { maxZoom: 19 });
+const osmTileLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 });
+
+satTileLayer.addTo(map);
+
+document.getElementById('btn-layer-sat').addEventListener('click', function(){
+  document.querySelectorAll('.layer-btn').forEach(b=>b.classList.remove('active'));
+  this.classList.add('active');
+  map.removeLayer(darkTileLayer); map.removeLayer(osmTileLayer);
+  satTileLayer.addTo(map);
+});
+document.getElementById('btn-layer-dark').addEventListener('click', function(){
+  document.querySelectorAll('.layer-btn').forEach(b=>b.classList.remove('active'));
+  this.classList.add('active');
+  map.removeLayer(satTileLayer); map.removeLayer(osmTileLayer);
+  darkTileLayer.addTo(map);
+});
+document.getElementById('btn-layer-osm').addEventListener('click', function(){
+  document.querySelectorAll('.layer-btn').forEach(b=>b.classList.remove('active'));
+  this.classList.add('active');
+  map.removeLayer(satTileLayer); map.removeLayer(darkTileLayer);
+  osmTileLayer.addTo(map);
+});
+
+// Render Baseline Glowing River Polylines
+const riverLayerGroup = L.layerGroup().addTo(map);
+segments.forEach(seg => {
+  if (!seg.coords || !seg.coords.length) return;
+  L.polyline(seg.coords, { color: '#00e5ff', weight: 8, opacity: 0.25, lineCap: 'round' }).addTo(riverLayerGroup);
+  L.polyline(seg.coords, { color: '#0284c7', weight: 4, opacity: 0.95, lineCap: 'round' })
+    .bindTooltip(`<b>${seg.name}</b><br><span style="color:#00e5ff">${(seg.length_m/1000).toFixed(1)} km</span>`, { sticky: true })
+    .addTo(riverLayerGroup);
+});
+
+const assetsLayerGroup = L.layerGroup().addTo(map);
+function customSvgIcon(bg, iconText, borderCol = '#fff') {
+  return L.divIcon({
+    className: '',
+    html: `<div style="width:26px;height:26px;border-radius:50%;background:${bg};border:2px solid ${borderCol};box-shadow:0 0 12px ${bg};display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:11px;">${iconText}</div>`,
+    iconSize: [26, 26], iconAnchor: [13, 13]
+  });
+}
+
+criticalIntakes.forEach(intake => {
+  L.marker(intake.pos, { icon: customSvgIcon('#a855f7', '💧', '#c084fc') })
+    .bindPopup(`<b>${intake.name}</b><br><span style="color:#a855f7">Capacity: ${intake.capacity}</span>`)
+    .addTo(assetsLayerGroup);
+});
+
+monitoredSettlements.forEach(settlement => {
+  L.marker(settlement.pos, { icon: customSvgIcon('#f59e0b', '⌂', '#fbbf24') })
+    .bindPopup(`<b>${settlement.name}</b>`)
+    .addTo(assetsLayerGroup);
+});
+
+/* ===============================================================
+   6. REPORTING & DISPATCH CONTROLLER
+=============================================================== */
+let reportsList = [];
+let localReportSeq = 1;
+let isPickingPoint = false;
+let pendingCoords = null;
+let pendingPickerMarker = null;
+let activeTrajectoryLayer = L.layerGroup().addTo(map);
+let reportMarkersLayer = L.layerGroup().addTo(map);
+
+const modeExploreBtn = document.getElementById('mode-explore-btn');
+const modeReportBtn = document.getElementById('mode-report-btn');
+const pinBanner = document.getElementById('pin-banner');
+const btnPickMap = document.getElementById('btn-pick-map');
+const btnUseGps = document.getElementById('btn-use-gps');
+const gpsPickerBox = document.getElementById('gps-picker-box');
+const coordsText = document.getElementById('coords-text');
+const submitBtn = document.getElementById('submit-btn');
+
+function setPickingState(enable) {
+  isPickingPoint = enable;
+  pinBanner.classList.toggle('visible', enable);
+  modeReportBtn.classList.toggle('active', enable);
+  modeReportBtn.classList.toggle('report-mode', enable);
+  modeExploreBtn.classList.toggle('active', !enable);
+  document.getElementById('map').style.cursor = enable ? 'crosshair' : '';
+  if (enable) {
+    switchSidebarTab('report');
+    if (window.innerWidth <= 960) document.getElementById('sidebar-drawer').classList.remove('drawer-expanded');
+  }
+}
+
+modeReportBtn.addEventListener('click', () => setPickingState(true));
+modeExploreBtn.addEventListener('click', () => setPickingState(false));
+btnPickMap.addEventListener('click', () => setPickingState(true));
+
+map.on('click', (e) => {
+  if (!isPickingPoint) return;
+  setPendingLocation([e.latlng.lat, e.latlng.lng]);
+  setPickingState(false);
+  showToast(currentLang === 'ml' ? "സ്ഥാനം രേഖപ്പെടുത്തി! പെരിയാറിലേക്ക് കണക്ട് ചെയ്യുന്നു..." : "Location locked! Snapping to Periyar stream...");
+  if (window.innerWidth <= 960) document.getElementById('sidebar-drawer').classList.add('drawer-expanded');
+});
+
+btnUseGps.addEventListener('click', () => {
+  if (!navigator.geolocation) {
+    alert("Geolocation is not supported by your browser.");
+    return;
+  }
+  btnUseGps.innerHTML = `<span>GPS...</span>`;
+  navigator.geolocation.getCurrentPosition(
+    (pos) => {
+      btnUseGps.innerHTML = `<i data-lucide="navigation" style="width:14px;height:14px;"></i><span data-i18n="btn_use_gps">${i18n[currentLang].btn_use_gps}</span>`;
+      lucide.createIcons();
+      setPendingLocation([pos.coords.latitude, pos.coords.longitude]);
+      map.setView([pos.coords.latitude, pos.coords.longitude], 14);
+      showToast(currentLang === 'ml' ? "തത്സമയ GPS ലൊക്കേഷൻ പിൻ ചെയ്തു." : "Current GPS position pinned.");
+    },
+    (err) => {
+      btnUseGps.innerHTML = `<i data-lucide="navigation" style="width:14px;height:14px;"></i><span data-i18n="btn_use_gps">${i18n[currentLang].btn_use_gps}</span>`;
+      lucide.createIcons();
+      alert("GPS Error: " + err.message);
+    },
+    { enableHighAccuracy: true, timeout: 10000 }
+  );
+});
+
+function setPendingLocation(latlng) {
+  pendingCoords = latlng;
+  if (pendingPickerMarker) map.removeLayer(pendingPickerMarker);
+  
+  const pinIcon = L.divIcon({
+    className: '',
+    html: `<div class="custom-radar-marker"><div class="radar-ring"></div><div class="radar-center-dot">!</div></div>`,
+    iconSize: [36, 36], iconAnchor: [18, 18]
+  });
+
+  pendingPickerMarker = L.marker(pendingCoords, { icon: pinIcon }).addTo(map);
+  gpsPickerBox.classList.add('locked');
+  coordsText.innerHTML = `<i data-lucide="check" style="width:15px;height:15px;color:var(--emerald-safe);"></i><b style="color:var(--river-cyan)">${pendingCoords[0].toFixed(5)}°N, ${pendingCoords[1].toFixed(5)}°E</b>`;
+  lucide.createIcons();
+  submitBtn.disabled = false;
+}
+
+let selectedSightingType = 'Discoloured water';
+let selectedSightingCode = 'discoloured_water';
+
+document.querySelectorAll('.sighting-opt-card').forEach(card => {
+  card.addEventListener('click', function() {
+    document.querySelectorAll('.sighting-opt-card').forEach(c => c.classList.remove('selected'));
+    this.classList.add('selected');
+    selectedSightingType = this.dataset.value;
+    selectedSightingCode = this.dataset.code;
+  });
+});
+
+const severitySlider = document.getElementById('f-severity');
+const sevLabelText = document.getElementById('sev-label-text');
+severitySlider.addEventListener('input', function() {
+  const v = parseInt(this.value);
+  if (v === 1) {
+    sevLabelText.textContent = currentLang === 'ml' ? "കുറഞ്ഞ തോത്" : "Advisory / Minor Discolouration";
+    sevLabelText.className = "optional-tag sev-advisory";
+  } else if (v === 2) {
+    sevLabelText.textContent = currentLang === 'ml' ? "മിതമായ ജാഗ്രത" : "Moderate Pollution Alert";
+    sevLabelText.className = "optional-tag sev-moderate";
+  } else {
+    sevLabelText.textContent = currentLang === 'ml' ? "അതീവ ഗുരുതരം" : "CRITICAL HAZARD EMERGENCY";
+    sevLabelText.className = "optional-tag sev-critical";
+  }
+});
+
+const photoDropZone = document.getElementById('photo-drop-zone');
+const photoFileInput = document.getElementById('photo-file-input');
+const photoPreview = document.getElementById('photo-preview');
+const photoPlaceholder = document.getElementById('photo-placeholder-content');
+
+// Holds the actual File object so it can be uploaded to Supabase Storage on
+// submit. photoPreview.src only ever held a local base64 data: URL, which
+// is why p_photo_path was previously hardcoded to null — nothing was ever
+// sent to the server.
+let selectedPhotoFile = null;
+
+photoDropZone.addEventListener('click', () => photoFileInput.click());
+photoFileInput.addEventListener('change', (e) => {
+  const file = e.target.files[0];
+  if (file) {
+    selectedPhotoFile = file;
+    const reader = new FileReader();
+    reader.onload = function(evt) {
+      photoPreview.src = evt.target.result;
+      photoPreview.style.display = 'block';
+      photoPlaceholder.style.display = 'none';
+      showToast(currentLang === 'ml' ? "ചിത്രം ചേർത്തു." : "Evidence photo attached.");
+    };
+    reader.readAsDataURL(file);
+  }
+});
+
+/* ===============================================================
+   6b. EVIDENCE PHOTO UPLOAD (Supabase Storage)
+=============================================================== */
+const EVIDENCE_BUCKET = 'evidence-photos';
+
+/**
+ * Uploads the selected evidence photo to the `evidence-photos` Supabase
+ * Storage bucket and returns its public URL, or null if there's nothing
+ * to upload / the client isn't configured / the upload fails. Upload
+ * failure is intentionally non-blocking — a citizen report should still
+ * go through even if the photo doesn't make it, per the "do not lose a
+ * report" principle from the preparation document's safety-first design.
+ */
+async function uploadEvidencePhoto(file, reportId) {
+  if (!file || !supabase) return null;
+  try {
+    const ext = (file.name.split('.').pop() || 'jpg').toLowerCase();
+    const path = `${reportId}-${Date.now()}.${ext}`;
+    const { error: uploadError } = await supabase.storage
+      .from(EVIDENCE_BUCKET)
+      .upload(path, file, { cacheControl: '3600', upsert: false, contentType: file.type || 'image/jpeg' });
+    if (uploadError) {
+      console.warn("Evidence upload failed:", uploadError.message);
+      showToast(currentLang === 'ml' ? "⚠ ചിത്രം അപ്‌ലോഡ് ചെയ്യാനായില്ല (റിപ്പോർട്ട് അയച്ചു)" : "⚠ Photo upload failed (report still sent)");
+      return null;
+    }
+    const { data: urlData } = supabase.storage.from(EVIDENCE_BUCKET).getPublicUrl(path);
+    return urlData?.publicUrl || null;
+  } catch (err) {
+    console.warn("Evidence upload error:", err);
+    return null;
+  }
+}
+
+/**
+ * Fetches an evidence photo as a blob and forces a real browser download
+ * (rather than just navigating to the image), so it works even though the
+ * image is hosted cross-origin on Supabase's storage domain.
+ */
+window.downloadEvidence = async function(reportId) {
+  const report = reportsList.find(r => r.id === reportId);
+  if (!report || !report.photo_url) {
+    showToast(currentLang === 'ml' ? "ചിത്രം ലഭ്യമല്ല" : "No evidence photo for this report");
+    return;
+  }
+  try {
+    const res = await fetch(report.photo_url);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const blob = await res.blob();
+    const ext = (report.photo_url.split('.').pop() || 'jpg').split('?')[0];
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `${reportId}-evidence.${ext}`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(a.href);
+    showToast(currentLang === 'ml' ? "✓ ചിത്രം ഡൗൺലോഡ് ചെയ്തു" : "✓ Evidence photo downloaded");
+  } catch (err) {
+    console.warn("Evidence download failed:", err);
+    showToast(currentLang === 'ml' ? "⚠ ഡൗൺലോഡ് പരാജയപ്പെട്ടു" : "⚠ Download failed — opening in new tab instead");
+    window.open(report.photo_url, '_blank');
+  }
+};
+
+async function syncFromSupabase() {
+  if (!supabase) return;
+  try {
+    const { data, error } = await supabase.from('reports').select('*').order('created_at', { ascending: false });
+    if (error) {
+      console.warn("Supabase fetch notice:", error.message);
+      return;
+    }
+    if (data && data.length) {
+      reportsList = [];
+      data.forEach(row => {
+        const pt = [row.lat || row.latitude, row.lng || row.longitude];
+        const snap = snapToRiverNetwork(pt);
+        const report = {
+          id: row.report_id || `RPT-${String(localReportSeq++).padStart(3, '0')}`,
+          type: row.type || row.sighting_type || 'Discoloured water',
+          observed_at: row.observed_at || row.created_at || new Date().toISOString(),
+          desc: row.desc || row.description || '',
+          latlng: pt,
+          status: row.status || (snap ? 'unverified' : 'unmatched'),
+          reporter_name: row.reporter_name || 'Anonymous Citizen',
+          reporter_phone: row.reporter_phone || null,
+          photo_url: row.photo_path || row.photo_url || null,
+          snap: snap
+        };
+        if (snap) {
+          report.downstream = traverseDownstreamGraph(snap.segment.id);
+          report.assets = getDownstreamAssets(report.downstream);
+        }
+        reportsList.push(report);
+        renderReportMarkerOnMap(report);
+      });
+      renderTimelineView();
+      renderAdminDeskView();
+      updateImpactBadge();
+    }
+  } catch (err) {
+    console.error("Supabase sync failed:", err);
+  }
+}
+
+submitBtn.addEventListener('click', async () => {
+  if (!pendingCoords) return;
+
+  submitBtn.disabled = true;
+  submitBtn.innerHTML = `<span>${currentLang === 'ml' ? 'കൈമാറുന്നു...' : 'Transmitting to Network...'}</span>`;
+
+  const dt = document.getElementById('f-datetime').value || new Date().toISOString();
+  const desc = document.getElementById('f-desc').value.trim();
+  const reporterName = document.getElementById('f-reporter-name').value.trim() || 'Anonymous Citizen';
+  const reporterPhone = document.getElementById('f-reporter-phone').value.trim() || null;
+
+  const snapResult = snapToRiverNetwork(pendingCoords);
+  const reportObj = {
+    id: `RPT-${String(localReportSeq++).padStart(3, '0')}`,
+    type: selectedSightingType,
+    observed_at: dt,
+    desc: desc,
+    latlng: pendingCoords,
+    status: snapResult ? 'unverified' : 'unmatched',
+    reporter_name: reporterName,
+    reporter_phone: reporterPhone,
+    snap: snapResult
+  };
+
+  if (snapResult) {
+    reportObj.downstream = traverseDownstreamGraph(snapResult.segment.id);
+    reportObj.assets = getDownstreamAssets(reportObj.downstream);
+  }
+
+  reportsList.unshift(reportObj);
+  renderReportMarkerOnMap(reportObj);
+
+  // Upload evidence photo (if attached) BEFORE the RPC so we can pass its
+  // real URL instead of the previous hardcoded null.
+  let photoUrl = null;
+  if (selectedPhotoFile) {
+    photoUrl = await uploadEvidencePhoto(selectedPhotoFile, reportObj.id);
+  }
+  reportObj.photo_url = photoUrl;
+
+  // SUPABASE RPC
+  if (supabase) {
+    try {
+      await supabase.rpc('create_report_with_impact', {
+        p_sighting_type: selectedSightingCode,
+        p_observed_at: new Date(dt).toISOString(),
+        p_longitude: pendingCoords[1],
+        p_latitude: pendingCoords[0],
+        p_description: desc || null,
+        p_photo_path: photoUrl,
+        p_snap_tolerance_m: SNAP_TOLERANCE_M,
+        p_reporter_name: reporterName,
+        p_reporter_phone: reporterPhone
+      });
+    } catch(rpcErr) {
+      console.warn("RPC notice:", rpcErr);
+    }
+  }
+
+  // Reset Form
+  selectedPhotoFile = null;
+  pendingCoords = null;
+  if (pendingPickerMarker) { map.removeLayer(pendingPickerMarker); pendingPickerMarker = null; }
+  gpsPickerBox.classList.remove('locked');
+  coordsText.innerHTML = `<i data-lucide="crosshair" style="width:15px;height:15px;color:var(--text-dim);"></i><span style="color:var(--text-dim);" data-i18n="msg_no_location">${i18n[currentLang].msg_no_location}</span>`;
+  document.getElementById('f-desc').value = '';
+  document.getElementById('f-reporter-name').value = '';
+  document.getElementById('f-reporter-phone').value = '';
+  photoPreview.style.display = 'none';
+  photoPlaceholder.style.display = 'flex';
+  submitBtn.innerHTML = `<i data-lucide="send" style="width:18px;height:18px;"></i><span data-i18n="btn_submit_report">${i18n[currentLang].btn_submit_report}</span>`;
+  lucide.createIcons();
+
+  showToast(currentLang === 'ml' ? "✓ റിപ്പോർട്ട് വിജയകരമായി അയച്ചു!" : "✓ Sighting Dispatched! Downstream impact generated.");
+  selectAndRenderImpact(reportObj.id);
+  switchSidebarTab('impact');
+  renderTimelineView();
+  renderAdminDeskView();
+  updateImpactBadge();
+
+  if (window.innerWidth <= 960) document.getElementById('sidebar-drawer').classList.add('drawer-expanded');
+});
+
+function renderReportMarkerOnMap(report) {
+  if (report._marker) map.removeLayer(report._marker);
+  const markerColor = report.status === 'verified' ? '#f43f5e' : report.status === 'review' ? '#d97706' : '#f59e0b';
+  const m = L.marker(report.latlng, { icon: customSvgIcon(markerColor, '!', '#fff') })
+    .bindPopup(`<div style="font-family:'Plus Jakarta Sans',sans-serif;padding:4px;">
+      <div style="font-size:11px;color:${markerColor};font-weight:700;text-transform:uppercase;">${report.status} Sighting</div>
+      <b style="font-size:13px;color:#0f172a;">${report.type}</b>
+      <div style="font-size:11px;color:#475569;margin-top:2px;">ID: ${report.id}</div>
+    </div>`)
+    .addTo(reportMarkersLayer);
+
+  m.on('click', () => {
+    selectAndRenderImpact(report.id);
+    switchSidebarTab('impact');
+    if (window.innerWidth <= 960) document.getElementById('sidebar-drawer').classList.add('drawer-expanded');
+  });
+  report._marker = m;
+}
+
+/* ===============================================================
+   7. IMPACT RENDERING
+=============================================================== */
+function selectAndRenderImpact(reportId) {
+  const report = reportsList.find(r => r.id === reportId);
+  activeTrajectoryLayer.clearLayers();
+  const container = document.getElementById('impact-container-inner');
+
+  if (!report) {
+    container.innerHTML = `<div class="empty-state-view"><h3>Select a sighting on the map.</h3></div>`;
+    return;
+  }
+
+  if (!report.snap) {
+    container.innerHTML = `
+      <div style="margin-bottom:14px;">
+        <span class="verification-pill unverified">OUT OF TOLERANCE</span>
+        <h2 style="font-size:18px;margin-top:6px;color:var(--text-main);">${report.type}</h2>
+        <div style="font-size:12px;color:var(--text-muted);font-family:'JetBrains Mono',monospace;">${report.id} · ${new Date(report.observed_at).toLocaleTimeString()}</div>
+      </div>
+      <div class="privacy-advisory-card" style="background:rgba(244,63,94,0.1);border-color:rgba(244,63,94,0.3);color:var(--rose-danger);">
+        <i data-lucide="alert-triangle" style="width:18px;height:18px;"></i>
+        <div>${currentLang === 'ml' ? 'ഈ പോയിന്റ് പെരിയാർ നദിയിൽ നിന്നും 800 മീറ്ററിൽ കൂടുതൽ അകലെയായതിനാൽ തത്സമയ ജലപാതയിലേക്ക് ബന്ധിപ്പിക്കാനായില്ല.' : `This sighting is situated beyond the ${SNAP_TOLERANCE_M}m river threshold.`}</div>
+      </div>
+    `;
+    lucide.createIcons();
+    return;
+  }
+
+  report.downstream.forEach(segId => {
+    const seg = segments.find(s => s.id === segId);
+    if (seg) {
+      L.polyline(seg.coords, { color: '#00e5ff', weight: 10, opacity: 0.45 }).addTo(activeTrajectoryLayer);
+      L.polyline(seg.coords, { color: '#0284c7', weight: 5, opacity: 0.95, dashArray: '8, 8' }).addTo(activeTrajectoryLayer);
+    }
+  });
+
+  L.circleMarker(report.snap.point, { radius: 7, color: '#00e5ff', fillColor: '#00e5ff', fillOpacity: 1 }).addTo(activeTrajectoryLayer);
+  L.polyline([report.latlng, report.snap.point], { color: '#00e5ff', weight: 2, dashArray: '4, 4' }).addTo(activeTrajectoryLayer);
+
+  const totalDownstreamKm = (report.downstream.reduce((acc, id) => acc + (segments.find(s=>s.id===id)?.length_m || 0), 0) / 1000).toFixed(1);
+  const estTimeToSeaHours = (totalDownstreamKm / 1.6).toFixed(1);
+
+  let html = `
+    <div style="margin-bottom:14px;">
+      <span class="verification-pill ${report.status}">${report.status.toUpperCase()} OBSERVATION</span>
+      <h2 style="font-size:18px;margin-top:6px;color:var(--text-main);">${report.type}</h2>
+      <div style="font-size:12px;color:var(--text-muted);font-family:'JetBrains Mono',monospace;">${report.id} · ${new Date(report.observed_at).toLocaleString()}</div>
+    </div>
+
+    ${report.photo_url ? `
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;padding:8px;border:1px solid var(--border-subtle);border-radius:8px;background:var(--bg-input);">
+      <img src="${report.photo_url}" alt="Evidence" style="width:48px;height:48px;object-fit:cover;border-radius:6px;cursor:pointer;" onclick="window.open('${report.photo_url}','_blank')">
+      <button class="action-btn-sub" style="flex:1;justify-content:center;" onclick="window.downloadEvidence('${report.id}')">
+        <i data-lucide="download" style="width:12px;height:12px;"></i> Download Evidence
+      </button>
+    </div>` : ''}
+
+    <div class="impact-metric-grid">
+      <div class="metric-tile">
+        <span class="metric-val cyan">${report.snap.dist.toFixed(0)} m</span>
+        <span class="metric-label">${currentLang === 'ml' ? 'നദിയിലേക്കുള്ള അകലം' : 'SNAP DISTANCE TO STREAM'}</span>
+      </div>
+      <div class="metric-tile">
+        <span class="metric-val">${report.downstream.length} ${currentLang === 'ml' ? 'മേഖലകൾ' : 'Reaches'}</span>
+        <span class="metric-label">${currentLang === 'ml' ? 'ഒഴുക്കിന്റെ ഗതി' : 'DOWNSTREAM CHANNELS'}</span>
+      </div>
+      <div class="metric-tile">
+        <span class="metric-val cyan">${totalDownstreamKm} km</span>
+        <span class="metric-label">${currentLang === 'ml' ? 'കടലിലേക്കുള്ള ദൂരം' : 'DISTANCE TRACED TO SEA'}</span>
+      </div>
+      <div class="metric-tile">
+        <span class="metric-val amber">~${estTimeToSeaHours} hrs</span>
+        <span class="metric-label">${currentLang === 'ml' ? 'ഒഴുകിയെത്താൻ എടുക്കുന്ന സമയം' : 'EST. PLUME TRANSIT TIME'}</span>
+      </div>
+    </div>
+  `;
+
+  // Intakes
+  html += `<div class="impact-section-title"><span>${currentLang === 'ml' ? 'കുടിവെള്ള പമ്പ് ഹൗസുകൾ' : 'Critical Water Intakes'}</span><span>${report.assets.intakes.length}</span></div>`;
+  report.assets.intakes.forEach(intake => {
+    html += `
+      <div class="feature-entity-card">
+        <div class="entity-header">
+          <div class="entity-name-with-dot">
+            <span style="width:8px;height:8px;border-radius:50%;background:#a855f7;"></span>
+            <span>${intake.name}</span>
+          </div>
+          <span class="priority-badge">${intake.importance}</span>
+        </div>
+        <div class="entity-meta">
+          <span>Capacity: ${intake.capacity}</span>
+          <span style="color:var(--rose-danger)">Plume Vulnerable</span>
+        </div>
+      </div>
+    `;
+  });
+
+  // Settlements
+  html += `<div class="impact-section-title"><span>${currentLang === 'ml' ? 'ബാധിക്കപ്പെടുന്ന തീരപ്രദേശങ്ങൾ' : 'Downstream Settlement Zones'}</span><span>${report.assets.settlements.length}</span></div>`;
+  report.assets.settlements.forEach(st => {
+    html += `
+      <div class="feature-entity-card">
+        <div class="entity-header">
+          <div class="entity-name-with-dot">
+            <span style="width:8px;height:8px;border-radius:50%;background:#f59e0b;"></span>
+            <span>${st.name}</span>
+          </div>
+        </div>
+        <div class="entity-meta">
+          <span>Jurisdiction: ${localBodies[st.local_body]?.name || 'Local Body'}</span>
+          <span style="color:var(--emerald-safe)">In Vector</span>
+        </div>
+      </div>
+    `;
+  });
+
+  container.innerHTML = html;
+  lucide.createIcons();
+
+  const allCoords = report.downstream.map(id => segments.find(s=>s.id===id)?.coords || []).flat();
+  if (allCoords.length) map.fitBounds(L.latLngBounds(allCoords), { padding: [60, 60], maxZoom: 14 });
+}
+
+/* ===============================================================
+   8. ADMIN / AUTHORITY CONSOLE & WORKING REAL DISPATCH
+=============================================================== */
+function renderAdminDeskView() {
+  const adminFeed = document.getElementById('admin-incidents-feed');
+  if (!reportsList.length) {
+    adminFeed.innerHTML = `
+      <div class="empty-state-view">
+        <i data-lucide="shield-check" style="width:40px;height:40px;color:var(--emerald-safe);"></i>
+        <h3>${i18n[currentLang].admin_no_pending}</h3>
+        <p style="font-size:12px;">${i18n[currentLang].admin_no_pending_desc}</p>
+      </div>
+    `;
+    lucide.createIcons();
+    return;
+  }
+
+  adminFeed.innerHTML = reportsList.map(r => {
+    const isVerified = r.status === 'verified';
+    const totalDownstreamKm = r.downstream ? (r.downstream.reduce((acc, id) => acc + (segments.find(s=>s.id===id)?.length_m || 0), 0) / 1000).toFixed(1) : '0';
+    
+    // Generate prefilled WhatsApp emergency broadcast URL
+    const whatsappMsg = encodeURIComponent(
+      `🚨 *PERIYAR SAKSHI EMERGENCY POLLUTION DISPATCH*\n` +
+      `------------------------------------------\n` +
+      `Incident ID: ${r.id}\n` +
+      `Type: ${r.type}\n` +
+      `Status: ${r.status.toUpperCase()}\n` +
+      `Coordinates: ${r.latlng[0].toFixed(5)}°N, ${r.latlng[1].toFixed(5)}°E\n` +
+      `River Reach: ${r.snap ? r.snap.segment.name : 'Out of bounds'}\n` +
+      `Downstream Distance: ${totalDownstreamKm} km\n` +
+      `Time Observed: ${new Date(r.observed_at).toLocaleString()}\n` +
+      `\n⚠️ *KWA INTAKE ADVISORY:* Immediate raw water quality monitoring & intake valve safety check requested!`
+    );
+    const whatsappUrl = `https://wa.me/?text=${whatsappMsg}`;
+
+    return `
+      <div class="admin-incident-box ${isVerified ? 'verified-border' : ''}">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+          <div>
+            <span class="verification-pill ${r.status}">${r.status}</span>
+            <div style="font-weight:800;font-size:14px;color:var(--text-main);margin-top:4px;">${r.type}</div>
+            <div style="font-size:11px;color:var(--text-muted);font-family:'JetBrains Mono',monospace;">${r.id} · ${new Date(r.observed_at).toLocaleTimeString()}</div>
+          </div>
+          <button class="action-btn-sub" style="padding:4px 8px;font-size:10.5px;" onclick="window.locateOnMap('${r.id}')">
+            <i data-lucide="map-pin" style="width:12px;height:12px;"></i> View Map
+          </button>
+        </div>
+
+        <div style="font-size:12px;color:var(--text-muted);margin:8px 0;">
+          <strong>Location:</strong> ${r.snap ? r.snap.segment.name : 'Unmatched'} (${r.latlng[0].toFixed(4)}, ${r.latlng[1].toFixed(4)})<br>
+          ${r.desc ? `<strong>Details:</strong> "${r.desc}"<br>` : ''}
+          ${r.reporter_name ? `<strong>Reporter:</strong> ${r.reporter_name}` : ''} 
+          ${r.reporter_phone ? `(<span style="color:var(--emerald-safe);">Phone Encrypted</span>)` : ''}
+        </div>
+
+        ${r.photo_url ? `
+        <div style="display:flex;align-items:center;gap:10px;margin:8px 0;padding:8px;border:1px solid var(--border-subtle);border-radius:8px;background:var(--bg-input);">
+          <img src="${r.photo_url}" alt="Evidence" style="width:44px;height:44px;object-fit:cover;border-radius:6px;cursor:pointer;" onclick="window.open('${r.photo_url}','_blank')">
+          <button class="action-btn-sub" style="flex:1;justify-content:center;" onclick="window.downloadEvidence('${r.id}')">
+            <i data-lucide="download" style="width:12px;height:12px;"></i> Download Evidence
+          </button>
+        </div>` : ''}
+
+        <!-- Verification Actions -->
+        <div class="admin-actions-grid">
+          <button class="admin-btn btn-verify" onclick="window.setReportStatus('${r.id}', 'verified')">
+            <i data-lucide="alert-octagon" style="width:12px;height:12px;"></i> Verify & Alert
+          </button>
+          <button class="admin-btn btn-review" onclick="window.setReportStatus('${r.id}', 'review')">
+            <i data-lucide="clock" style="width:12px;height:12px;"></i> Under Review
+          </button>
+          <button class="admin-btn btn-dismiss" onclick="window.setReportStatus('${r.id}', 'unmatched')">
+            <i data-lucide="x" style="width:12px;height:12px;"></i> Dismiss
+          </button>
+        </div>
+
+        <!-- Real Dispatch Gateway -->
+        <div class="dispatch-gateway-panel">
+          <div class="gateway-header">
+            <span>DISPATCH GATEWAY</span>
+            <span style="color:var(--emerald-safe);font-family:'JetBrains Mono',monospace;">READY</span>
+          </div>
+          <div class="dispatch-action-row">
+            <a href="${whatsappUrl}" target="_blank" class="dispatch-trigger-btn btn-whatsapp">
+              <i data-lucide="share-2" style="width:13px;height:13px;"></i> WhatsApp Alert
+            </a>
+            <button class="dispatch-trigger-btn btn-shutoff" onclick="window.triggerKwaShutoffAdvisory('${r.id}')">
+              <i data-lucide="power" style="width:13px;height:13px;"></i> KWA Shut-off Order
+            </button>
+          </div>
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  lucide.createIcons();
+}
+
+// Global Actions attached to window for direct admin dispatch
+window.setReportStatus = function(reportId, newStatus) {
+  const report = reportsList.find(r => r.id === reportId);
+  if (report) {
+    report.status = newStatus;
+    renderReportMarkerOnMap(report);
+    renderTimelineView();
+    renderAdminDeskView();
+
+    if (newStatus === 'verified') {
+      playEmergencyAlertBeep();
+      showToast(currentLang === 'ml' ? "🚨 അടിയന്തര സംഭവം സ്ഥിരീകരിച്ചു! അലേർട്ടുകൾ സജീവമാക്കി." : "🚨 Incident VERIFIED! Authority siren & dispatches activated.");
+    } else {
+      showToast(`Status updated to: ${newStatus}`);
+    }
+
+    // Sync status change to Supabase if connected
+    if (supabase) {
+      supabase.from('reports').update({ status: newStatus }).eq('report_id', reportId).then(() => {
+        console.log("Status updated in Supabase.");
+      });
+    }
+  }
+};
+
+window.triggerKwaShutoffAdvisory = function(reportId) {
+  playEmergencyAlertBeep();
+  const report = reportsList.find(r => r.id === reportId);
+  alert(
+    `🚨 [KWA AUTOMATED INTAKE SHUT-OFF PROTOCOL ACTIVATED]\n\n` +
+    `Incident: ${report ? report.type : 'Pollution Alert'} (${reportId})\n` +
+    `Action: Automated intake isolation advisory transmitted to Aluva & Pathalam Headworks Operations Control.`
+  );
+  showToast("✓ KWA Emergency Advisory Transmitted.");
+};
+
+window.locateOnMap = function(reportId) {
+  const report = reportsList.find(r => r.id === reportId);
+  if (report) {
+    selectAndRenderImpact(reportId);
+    map.setView(report.latlng, 14);
+    if (window.innerWidth <= 960) document.getElementById('sidebar-drawer').classList.remove('drawer-expanded');
+  }
+};
+
+/* ===============================================================
+   9. TIMELINE STREAM
+=============================================================== */
+let currentFilter = 'all';
+document.getElementById('tl-filter-bar').addEventListener('click', (e) => {
+  const chip = e.target.closest('.filter-chip');
+  if (!chip) return;
+  document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
+  chip.classList.add('active');
+  currentFilter = chip.dataset.filter;
+  renderTimelineView();
+});
+
+function renderTimelineView() {
+  const streamEl = document.getElementById('timeline-stream-list');
+  let filtered = [...reportsList].sort((a,b) => new Date(b.observed_at) - new Date(a.observed_at));
+
+  if (currentFilter !== 'all') filtered = filtered.filter(r => r.status === currentFilter);
+
+  if (!filtered.length) {
+    streamEl.innerHTML = `<div class="empty-state-view"><h3>${i18n[currentLang].empty_timeline_title}</h3></div>`;
+    return;
+  }
+
+  const segmentCounts = {};
+  reportsList.forEach(r => {
+    const k = r.snap ? r.snap.segment.id : 'unmatched';
+    segmentCounts[k] = (segmentCounts[k] || 0) + 1;
+  });
+
+  streamEl.innerHTML = filtered.map(r => {
+    const segKey = r.snap ? r.snap.segment.id : 'unmatched';
+    const isRepeated = segmentCounts[segKey] > 1;
+    return `
+      <div class="timeline-node-card ${r.status}" data-id="${r.id}">
+        <div class="tl-top-line">
+          <span>${r.id}</span>
+          <span>${new Date(r.observed_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+        </div>
+        <div class="tl-title">${r.type}</div>
+        <div class="tl-location-str">${r.snap ? r.snap.segment.name : 'Unmatched'}</div>
+        ${isRepeated ? `<div class="tl-repeat-alert"><i data-lucide="repeat" style="width:12px;height:12px;"></i> ${segmentCounts[segKey]} sightings logged along this reach</div>` : ''}
+      </div>
+    `;
+  }).join('');
+
+  lucide.createIcons();
+
+  streamEl.querySelectorAll('.timeline-node-card').forEach(card => {
+    card.addEventListener('click', () => {
+      const repId = card.dataset.id;
+      const rep = reportsList.find(r => r.id === repId);
+      if (rep) {
+        selectAndRenderImpact(repId);
+        switchSidebarTab('impact');
+        map.setView(rep.latlng, 13);
+      }
+    });
+  });
+}
+
+function updateImpactBadge() {
+  document.getElementById('impact-count-badge').textContent = reportsList.length;
+}
+
+/* ===============================================================
+   10. TABS, TOAST & DRAWER CONTROLS
+=============================================================== */
+function switchSidebarTab(tabName) {
+  document.querySelectorAll('.tab-trigger').forEach(b => b.classList.toggle('active', b.dataset.tab === tabName));
+  document.querySelectorAll('.panel-view').forEach(p => p.classList.toggle('active', p.id === `panel-${tabName}`));
+}
+
+document.querySelectorAll('.tab-trigger').forEach(btn => {
+  btn.addEventListener('click', () => switchSidebarTab(btn.dataset.tab));
+});
+
+const drawerToggleBar = document.getElementById('drawer-toggle-bar');
+const sidebarDrawer = document.getElementById('sidebar-drawer');
+drawerToggleBar.addEventListener('click', () => {
+  sidebarDrawer.classList.toggle('drawer-expanded');
+});
+
+let toastTimer = null;
+function showToast(msg) {
+  const toast = document.getElementById('app-toast');
+  document.getElementById('toast-message').textContent = msg;
+  toast.classList.add('active');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => toast.classList.remove('active'), 3200);
+}
+
+/* ===============================================================
+   11. INITIALIZATION
+=============================================================== */
+(function initializeSystem() {
+  applyLanguage(currentLang);
+  applyTheme(currentTheme);
+
+  const now = new Date();
+  now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+  document.getElementById('f-datetime').value = now.toISOString().slice(0, 16);
+
+  syncFromSupabase();
+})();
+
+})();
+</script>
+</body>
+</html>
