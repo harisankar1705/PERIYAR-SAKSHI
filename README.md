@@ -1,13 +1,12 @@
-# PERIYAR SAKSHI — Frontend (Citizen Portal + Admin Console)
+# PERIYAR SAKSHI — Frontend (Citizen Portal)
 
 Two single-file HTML apps that share one Supabase project:
 
 | File | Role |
 |---|---|
 | `PERIYAR_SAKSHI_LAST_PRO.html` | Citizen-facing portal — report a sighting, view impact, mini admin tab |
-| `ADMIN_REWORKED.html` | Dedicated authority console — triage, verify, dispatch, evidence review |
 
-Both already point at the same project:
+
 ```js
 const SUPABASE_URL = 'https://dvuestkbydcpikivwqti.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_...';
